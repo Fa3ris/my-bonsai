@@ -3,47 +3,157 @@ const blank = " ";
 const branch = "|";
 const leftBranch = "/";
 const rightBranch = "\\";
+const lateral = "~";
 
+/**
+ *
+ * @param {*} min inclusive
+ * @param {*} max inclusive
+ * @returns
+ */
+function randInt(min, max) {
+  const minCeiled = Math.ceil(Math.min(min, max));
+  const maxFloored = Math.floor(Math.max(min, max));
+  return Math.floor(
+    minCeiled + Math.random() * (Math.abs(maxFloored - minCeiled) + 1)
+  );
+}
+
+const yCodeOffset = 10;
+// dx + 10 * dy
+const charCode = {
+  [-1 + -1 * yCodeOffset]: leftBranch, // -11
+  [-1 + 0 * yCodeOffset]: lateral, // -1
+  [-1 + 1 * yCodeOffset]: rightBranch, // 9
+
+  [0 + -1 * yCodeOffset]: branch, // -10
+  [0 + 0 * yCodeOffset]: lateral, // 0
+  [0 + 1 * yCodeOffset]: branch, // 10
+
+  [1 + -1 * yCodeOffset]: rightBranch, // -9
+  [1 + 0 * yCodeOffset]: lateral, // 1
+  [1 + 1 * yCodeOffset]: leftBranch, // 11
+};
+const xDirs = [-1, 0, 1];
+const yDirs = [0, 1];
 /**
  *
  * @param {number} width
  * @param {number} height
- * @returns {string[] }
+ * @returns {{lines: string[], seedY: number }}
  */
 function generateTree(width, height) {
-  const xInMiddle = Math.round(Math.random() * (width / 2) + width / 4);
-  const seedX = Math.min(xInMiddle, width - 1);
-
-  const yInlowerHalf = Math.round(Math.random() * (height / 2));
-  const seedY = yInlowerHalf; // Math.min(yInlowerHalf, height - 1);
-
   const lines = Array(width * height).fill(blank);
 
-  lines[seedY * width + seedX] = branch;
+  const getIndex = (x, y) => (height - 1 - y) * width + x;
 
-  for (let y = seedY; y < height - 1; y++) {
-    for (let x = 0; x < width; x++) {
-      const curr = lines[y * width + x];
-      if (curr === blank || curr === leaf) continue;
+  const setCase = (x, y, char) => {
+    lines[getIndex(x, y)] = char;
+  };
 
-      const left = Math.max(0, x - 1);
-      const center = x;
-      const right = Math.min(width - 1, x + 1);
-      const lowerChanceIfNearRoot = Math.abs((seedY - y) / seedY);
-      const nextRow = (y + 1) * width;
-      if (Math.random() < 0.5)
-        lines[nextRow + left] =
-          Math.random() < lowerChanceIfNearRoot ? leaf : leftBranch;
-      if (Math.random() < 0.5)
-        lines[nextRow + center] =
-          Math.random() < lowerChanceIfNearRoot ? leaf : branch;
-      if (Math.random() < 0.5)
-        lines[nextRow + right] =
-          Math.random() < lowerChanceIfNearRoot ? leaf : rightBranch;
+  const getCase = (x, y) => lines[getIndex(x, y)];
+
+  const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+
+  const seedX = Math.round(width / 2);
+  const seedY = 1;
+  const queue = [{ x: seedX, y: seedY, life: 20 }];
+
+  while (queue.length) {
+    const { x, y, life } = queue.shift();
+
+    if (life < 1) {
+      throw new Error();
+    }
+
+    let dx;
+    let dy;
+
+    let attempts = 5;
+    while (attempts) {
+      attempts--;
+      const tempDx = xDirs[randInt(0, xDirs.length - 1)];
+      const tempDY = yDirs[randInt(0, yDirs.length - 1)];
+
+      if (tempDx === 0 && tempDY === 0) {
+        continue;
+      }
+
+      const tempNx = x + tempDx;
+      const tempNY = y + tempDY;
+
+      const oob =
+        tempNx < 0 || tempNx > width - 1 || tempNY < 0 || tempNY > height - 1;
+      if (oob) {
+        continue;
+      }
+      if (getCase(tempNx, tempNY) === blank) {
+        dx = tempDx;
+        dy = tempDY;
+        break;
+      }
+    }
+
+    if (dx === undefined) {
+      console.log("cannot find direction, DIE");
+      continue;
+    }
+
+    const newX = x + dx;
+    const newY = y + dy;
+
+    const ch = life === 1 ? leaf : getChar(dx, dy);
+    setCase(x, y, ch);
+
+    if (life > 1) {
+      const newLife = life - 1;
+      queue.push({ x: newX, y: newY, life: newLife });
+
+      if (life % 13 == 0 || randInt(0, 40) < 10 || life < 5) {
+        queue.push({ x: x, y: y, life: newLife });
+      }
     }
   }
 
   return { lines, seedY };
+}
+
+if (document.body.querySelector("#DEBUG")) {
+  (function () {
+    const el = document.createElement("textarea");
+    const width = 80;
+    const height = 10;
+    el.cols = width;
+    el.rows = height;
+    document.body.append(el);
+
+    const foo = Array(width * height).fill(blank);
+
+    const rY = 0;
+    const rX = 0;
+    foo[(height - 1 - rY) * width + rX] = "R";
+    const cY = 0;
+    const cX = width - 1;
+    foo[(height - 1 - cY) * width + cX] = "C";
+
+    foo[(height - 1 - (height - 1)) * width + 0] = "A";
+    foo[(height - 1 - (height - 1)) * width + width - 1] = "B";
+
+    const displayTree = (y) => {
+      if (y > height) {
+        return;
+      }
+
+      setTimeout(() => {
+        el.value = buffer(y, height, width, foo);
+        displayTree(y + 1);
+      }, 100);
+    };
+
+    el.value = buffer(0, height, width, foo);
+
+    displayTree(1);
+  })();
 }
 
 (function () {
@@ -54,10 +164,10 @@ function generateTree(width, height) {
   el.rows = height;
   document.body.append(el);
 
-  const { lines: tree, seedY } = generateTree(width, height);
+  const { lines: tree } = generateTree(width, height);
 
   const displayTree = (y) => {
-    if (y >= height) {
+    if (y > height) {
       return;
     }
 
@@ -67,25 +177,27 @@ function generateTree(width, height) {
     }, 100);
   };
 
-  el.value = buffer(seedY, height, width, tree);
+  el.value = buffer(0, height, width, tree);
 
-  displayTree(seedY + 1);
+  displayTree(1);
 })();
 
 function buffer(y, height, width, tree) {
   const blanks = Array(height - y)
-    .fill(Array(width).fill(blank).join(""))
+    .fill(Array(width).fill("*").join(""))
     .join("\n");
 
   const rendered = [...Array(y)]
     .map((_, row) => {
       return tree
-        .slice(row * width, (row + 1) * width)
-        .reverse()
+        .slice((height - 1 - row) * width, (height - row) * width)
         .join("");
     })
     .reverse()
     .join("\n");
-  return blanks + "\n" + rendered;
-}
 
+  if (blanks.length) {
+    return blanks + "\n" + rendered;
+  }
+  return rendered;
+}
