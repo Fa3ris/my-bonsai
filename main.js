@@ -36,6 +36,34 @@ const charCode = {
 };
 const xDirs = [-1, 0, 1];
 const yDirs = [0, 1];
+
+
+class DeterministicTree {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.list = [];
+  }
+
+  growAll() {
+    console.log("grow");
+  }
+
+  /**
+   *
+   * @param {number} i
+   * @returns
+   */
+  step(i) {
+    if (i < 0 || i > this.width - 1 || i > this.height - 1) return;
+    return {
+      x: i,
+      y: i,
+      c: leftBranch,
+      nextTime: i > 6 ? 50 - 2 * i : undefined,
+    };
+  }
+}
 /**
  *
  * @param {number} width
@@ -178,6 +206,67 @@ if (document.body.querySelector("#DEBUG")) {
   };
 
   el.value = buffer(0, height, width, tree);
+
+  displayTree(1);
+})();
+
+class Grid {
+  constructor(w, h) {
+    this.w = w;
+    this.h = h;
+    this.grid = Array(w * h).fill(blank);
+  }
+  /**
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {string} c
+   */
+  set(x, y, c) {
+    this.grid[(this.h - 1 - y) * this.w + x] = c;
+  }
+
+  toString() {
+    const rendered = [...Array(this.h)]
+      .map((_, row) => {
+        return this.grid
+          .slice((this.h - 1 - row) * this.w, (this.h - row) * this.w)
+          .join("");
+      })
+      .reverse()
+      .join("\n");
+    return rendered;
+  }
+}
+
+(function () {
+  const el = document.createElement("textarea");
+  const width = 80;
+  const height = 20;
+  el.cols = width;
+  el.rows = height;
+  document.body.append(el);
+
+  const tree = new DeterministicTree(width, height);
+
+  const grid = new Grid(width, height);
+  const { x, y, c } = tree.step(0);
+  grid.set(x, y, c);
+
+  const displayTree = (step) => {
+    const { x, y, c, nextTime } = tree.step(step) || {};
+    if (x === undefined) {
+      return;
+    }
+    grid.set(x, y, c);
+
+    setTimeout(() => {
+      el.value = grid.toString();
+      displayTree(step + 1);
+    }, nextTime || randInt(100, 300));
+  };
+
+  el.value = grid.toString();
 
   displayTree(1);
 })();
