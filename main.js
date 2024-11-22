@@ -5,6 +5,49 @@ const leftBranch = "/";
 const rightBranch = "\\";
 const lateral = "~";
 
+
+// hash function to generate the seed
+// https://stackoverflow.com/a/47593316
+function cyrb128(str) {
+  let h1 = 1779033703,
+    h2 = 3144134277,
+    h3 = 1013904242,
+    h4 = 2773480762;
+  for (let i = 0, k; i < str.length; i++) {
+    k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
+  return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+}
+
+// create random generator function, the seed is split in 4 numbers
+function sfc32(a, b, c, d) {
+  return function () {
+    a |= 0;
+    b |= 0;
+    c |= 0;
+    d |= 0;
+    let t = (((a + b) | 0) + d) | 0;
+    d = (d + 1) | 0;
+    a = b ^ (b >>> 9);
+    b = (c + (c << 3)) | 0;
+    c = (c << 21) | (c >>> 11);
+    c = (c + t) | 0;
+    return (t >>> 0) / 4294967296;
+  };
+}
+
+const seed = cyrb128(String(new Date().getTime()));
+const getRand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+
 /**
  *
  * @param {*} min inclusive
@@ -14,14 +57,16 @@ const lateral = "~";
 function randInt(min, max) {
   const minCeiled = Math.ceil(Math.min(min, max));
   const maxFloored = Math.floor(Math.max(min, max));
-  return Math.floor(
-    minCeiled + Math.random() * (Math.abs(maxFloored - minCeiled) + 1)
-  );
+  return minCeiled + Math.floor(getRand() * (maxFloored - minCeiled + 1));
 }
 
 const yCodeOffset = 10;
 // dx + 10 * dy
 const charCode = {
+  [-2 + -1 * yCodeOffset]: leftBranch, // -11
+  [-2 + 0 * yCodeOffset]: lateral, // -1
+  [-2 + 1 * yCodeOffset]: rightBranch, // 9
+
   [-1 + -1 * yCodeOffset]: leftBranch, // -11
   [-1 + 0 * yCodeOffset]: lateral, // -1
   [-1 + 1 * yCodeOffset]: rightBranch, // 9
@@ -33,10 +78,13 @@ const charCode = {
   [1 + -1 * yCodeOffset]: rightBranch, // -9
   [1 + 0 * yCodeOffset]: lateral, // 1
   [1 + 1 * yCodeOffset]: leftBranch, // 11
-};
-const xDirs = [-1, 0, 1];
-const yDirs = [0, 1];
 
+  [2 + -1 * yCodeOffset]: leftBranch, // -11
+  [2 + 0 * yCodeOffset]: lateral, // -1
+  [2 + 1 * yCodeOffset]: rightBranch, // 9
+};
+const xDirs = [-2, -1, 0, 1, 2];
+const yDirs = [0, 1];
 
 class DeterministicTree {
   constructor(width, height) {
@@ -85,8 +133,9 @@ function generateTree(width, height) {
 
   const seedX = Math.round(width / 2);
   const seedY = 1;
-  const queue = [{ x: seedX, y: seedY, life: 20 }];
-
+  const queue = [{ x: seedX, y: seedY, life: 40 }];
+  const maxBranches = 1024;
+  let branches = 0;
   while (queue.length) {
     const { x, y, life } = queue.shift();
 
@@ -100,8 +149,8 @@ function generateTree(width, height) {
     let attempts = 5;
     while (attempts) {
       attempts--;
-      const tempDx = xDirs[randInt(0, xDirs.length - 1)];
-      const tempDY = yDirs[randInt(0, yDirs.length - 1)];
+      const tempDx = xDirs[randInt(0, xDirs.length)];
+      const tempDY = yDirs[randInt(0, yDirs.length)];
 
       if (tempDx === 0 && tempDY === 0) {
         continue;
@@ -110,11 +159,6 @@ function generateTree(width, height) {
       const tempNx = x + tempDx;
       const tempNY = y + tempDY;
 
-      const oob =
-        tempNx < 0 || tempNx > width - 1 || tempNY < 0 || tempNY > height - 1;
-      if (oob) {
-        continue;
-      }
       if (getCase(tempNx, tempNY) === blank) {
         dx = tempDx;
         dy = tempDY;
@@ -130,6 +174,13 @@ function generateTree(width, height) {
     const newX = x + dx;
     const newY = y + dy;
 
+    const oob =
+      newX <= 0 || newX >= width - 1 || newY <= 0 || newY >= height - 1;
+    if (oob) {
+      setCase(x, y, leaf);
+      continue;
+    }
+
     const ch = life === 1 ? leaf : getChar(dx, dy);
     setCase(x, y, ch);
 
@@ -137,7 +188,11 @@ function generateTree(width, height) {
       const newLife = life - 1;
       queue.push({ x: newX, y: newY, life: newLife });
 
-      if (life % 13 == 0 || randInt(0, 40) < 10 || life < 5) {
+      if (
+        branches < maxBranches &&
+        (life % 13 == 0 || randInt(0, 40) < 10 || life < 5)
+      ) {
+        branches++;
         queue.push({ x: x, y: y, life: newLife });
       }
     }
@@ -187,7 +242,7 @@ if (document.body.querySelector("#DEBUG")) {
 (function () {
   const el = document.createElement("textarea");
   const width = 80;
-  const height = 20;
+  const height = 40;
   el.cols = width;
   el.rows = height;
   document.body.append(el);
