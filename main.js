@@ -86,6 +86,109 @@ const charCode = {
 const xDirs = [-2, -1, 0, 1, 2];
 const yDirs = [0, 1];
 
+class RandTree {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.list = [];
+    this.grid = Array(width * height).fill(blank);
+  }
+  growAll() {
+    const getIndex = (x, y) => (this.height - 1 - y) * this.width + x;
+
+    const setCase = (x, y, char) => {
+      this.list.push({ x, y, c: char });
+      this.grid[getIndex(x, y)] = char;
+    };
+
+    const getCase = (x, y) => this.grid[getIndex(x, y)];
+
+    const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+
+    const seedX = Math.round(this.width / 2);
+    const seedY = 1;
+    const queue = [{ x: seedX, y: seedY, life: this.height + 5 }];
+    const maxBranches = 1024;
+    let branches = 0;
+    while (queue.length) {
+      const { x, y, life } = queue.shift();
+
+      if (life < 1) {
+        throw new Error();
+      }
+
+      let dx;
+      let dy;
+
+      let attempts = 5;
+      while (attempts) {
+        attempts--;
+        const tempDx = xDirs[randInt(0, xDirs.length)];
+        const tempDY = yDirs[randInt(0, yDirs.length)];
+
+        if (tempDx === 0 && tempDY === 0) {
+          continue;
+        }
+
+        const tempNx = x + tempDx;
+        const tempNY = y + tempDY;
+
+        if (getCase(tempNx, tempNY) === blank) {
+          dx = tempDx;
+          dy = tempDY;
+          break;
+        }
+      }
+
+      if (dx === undefined) {
+        console.log("cannot find direction, DIE");
+        continue;
+      }
+
+      const newX = x + dx;
+      const newY = y + dy;
+
+      const oob =
+        newX <= 0 ||
+        newX >= this.width - 1 ||
+        newY <= 0 ||
+        newY >= this.height - 1;
+      if (oob) {
+        setCase(x, y, leaf);
+        continue;
+      }
+
+      if (getCase(x, y) === blank) {
+        const ch = life === 1 ? leaf : getChar(dx, dy);
+        setCase(x, y, ch);
+      }
+
+      if (life > 1) {
+        const newLife = life - 1;
+        queue.push({ x: newX, y: newY, life: newLife });
+
+        if (
+          branches < maxBranches &&
+          (life % 13 == 0 || randInt(0, 40) < 10 || life < 5)
+        ) {
+          branches++;
+          queue.push({ x: x, y: y, life: newLife });
+        }
+      }
+    }
+  }
+
+  /**
+   *
+   * @param {number} i
+   * @returns
+   */
+  step(i) {
+    if (i < 0 || i > this.list.length) return;
+    return this.list[i];
+  }
+}
+
 class DeterministicTree {
   constructor(width, height) {
     this.width = width;
@@ -181,8 +284,10 @@ function generateTree(width, height) {
       continue;
     }
 
-    const ch = life === 1 ? leaf : getChar(dx, dy);
-    setCase(x, y, ch);
+    if (getCase(x, y) === blank) {
+      const ch = life === 1 ? leaf : getChar(dx, dy);
+      setCase(x, y, ch);
+    }
 
     if (life > 1) {
       const newLife = life - 1;
@@ -293,7 +398,39 @@ class Grid {
     return rendered;
   }
 }
+if (document.body.querySelector("#DEBUG")) {
+  (function () {
+    const el = document.createElement("textarea");
+    const width = 80;
+    const height = 20;
+    el.cols = width;
+    el.rows = height;
+    document.body.append(el);
 
+    const tree = new DeterministicTree(width, height);
+
+    const grid = new Grid(width, height);
+    const { x, y, c } = tree.step(0);
+    grid.set(x, y, c);
+
+    const displayTree = (step) => {
+      const { x, y, c, nextTime } = tree.step(step) || {};
+      if (x === undefined) {
+        return;
+      }
+      grid.set(x, y, c);
+
+      setTimeout(() => {
+        el.value = grid.toString();
+        displayTree(step + 1);
+      }, nextTime || randInt(100, 300));
+    };
+
+    el.value = grid.toString();
+
+    displayTree(1);
+  })();
+}
 (function () {
   const el = document.createElement("textarea");
   const width = 80;
@@ -302,8 +439,8 @@ class Grid {
   el.rows = height;
   document.body.append(el);
 
-  const tree = new DeterministicTree(width, height);
-
+  const tree = new RandTree(width, height);
+  tree.growAll();
   const grid = new Grid(width, height);
   const { x, y, c } = tree.step(0);
   grid.set(x, y, c);
@@ -318,7 +455,7 @@ class Grid {
     setTimeout(() => {
       el.value = grid.toString();
       displayTree(step + 1);
-    }, nextTime || randInt(100, 300));
+    }, nextTime || randInt(10, 15));
   };
 
   el.value = grid.toString();

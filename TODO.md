@@ -6,3 +6,4 @@ Features
 - [ ] rewind display
 - [ ] configure tree generation, max number of branches, rate of split
 - [ ] save generated tree
+- [ ] colored display
