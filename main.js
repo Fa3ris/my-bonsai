@@ -189,6 +189,228 @@ class RandTree {
   }
 }
 
+
+const BranchType = {
+  trunk: 0,
+  branch: 1,
+  branchLeft: 2,
+  branchRight: 3,
+  leafPack: 4,
+};
+
+/**
+ *
+ * @param {number} x
+ * @param {number} y
+ * @param {string} pattern
+ * @returns array of cases
+ */
+function casesForPattern(x, y, pattern) {
+  const cases = [];
+  const tab = pattern.split("");
+  const middle = Math.floor(tab.length / 2);
+  let stdIdx = 0;
+  const lower = x - middle;
+  const upper = x + (tab.length % 2 == 0 ? middle - 1 : middle);
+  for (let i = lower; i <= upper; i++, stdIdx++) {
+    cases.push({ x: i, y, char: pattern[stdIdx] });
+  }
+  return cases;
+}
+
+class TrunkTree {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+    this.list = [];
+    this.grid = Array(width * height).fill(blank);
+  }
+
+  grow(grid) {
+    grid.set || grid.setMulti;
+    return true ? [this, class NewBranch {}] : undefined;
+  }
+
+  growAll() {
+    const getIndex = (x, y) => (this.height - 1 - y) * this.width + x;
+
+    const setCase = (x, y, char) => {
+      this.list.push({ x, y, char });
+      this.grid[getIndex(x, y)] = char;
+    };
+
+    /**
+     *
+     * @param {{x: number, y: number, char: string}[]} cases
+     */
+    const setMultiCases = (cases) => {
+      this.list.push(cases);
+      for (const v of cases) {
+        this.grid[getIndex(v.x, v.y)] = v.char;
+      }
+    };
+
+    const getCase = (x, y) => this.grid[getIndex(x, y)];
+
+    const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+
+    const seedX = Math.round(this.width / 2);
+    const seedY = 1;
+    const queue = [
+      { x: seedX, y: seedY, type: BranchType.trunk, life: 12, age: 0 },
+    ];
+    const predefined = [
+      {
+        dx: -1,
+      },
+      { dx: -1 },
+      { dx: -1 },
+      { dx: -1, shoot: BranchType.branchLeft },
+      { dx: 0, shoot: BranchType.branchRight },
+      { dx: 1 },
+      { dx: 1 },
+      { dx: 1 },
+      { dx: 1, shoot: BranchType.branchRight },
+      { dx: 0 },
+      { dx: 0, shoot: BranchType.branchLeft },
+      { dx: 0, shoot: BranchType.leafPack },
+    ];
+
+    const shoots = [];
+    while (queue.length) {
+      const { x, y, life, type, age, dx: prevDx } = queue.shift();
+
+      if (type === BranchType.trunk) {
+        const { dx, shoot } = predefined.shift();
+
+        const dy = 1;
+        let pattern;
+        let offsetX = 0;
+        if (dy == 0) {
+          pattern = "/~";
+        } else if (dx < 0) {
+          pattern = "\\|";
+          if (prevDx > 0) {
+            offsetX = -1;
+          }
+        } else if (dx == 0) {
+          pattern = "/|\\";
+          if (prevDx < 0) {
+            offsetX = 1;
+          } else if (prevDx > 0) {
+            offsetX = -2;
+          }
+        } else if (dx > 0) {
+          pattern = "|/";
+          if (prevDx === 0) {
+            offsetX = 1;
+          } else if (prevDx < 0) {
+            offsetX = 1;
+          }
+        }
+
+        const finalX = x + offsetX;
+        const casesStr = casesForPattern(finalX, y, pattern);
+
+        setMultiCases(casesStr);
+
+        if (shoot) {
+          if (shoot === BranchType.branchLeft) {
+            shoots.push({
+              x: casesStr[0].x - 1,
+              y,
+              type: shoot,
+            });
+          } else if (shoot === BranchType.branchRight) {
+            shoots.push({
+              x: casesStr.at(-1).x + 1,
+              y,
+              type: shoot,
+            });
+          } else if (shoot === BranchType.leafPack) {
+            shoots.push({
+              x,
+              y: y + 1,
+              type: shoot,
+            });
+          }
+        }
+
+        if (life > 1) {
+          queue.push({
+            x: finalX + dx,
+            y: y + dy,
+            dx,
+            life: life - 1,
+            type,
+            age: age + 1,
+          });
+        }
+      }
+    }
+
+    while (shoots.length) {
+      const { x, y, type } = shoots.shift();
+      const shootsQueue = [{ x, y, type, life: 3 }];
+
+      while (shootsQueue.length) {
+        const { x, y, life, type } = shootsQueue.shift();
+        if (type === BranchType.branchLeft) {
+          setMultiCases(casesForPattern(x, y, "\\_"));
+          if (life > 1) {
+            shootsQueue.push({ x: x - 1, y, life: life - 1, type });
+          } else {
+            for (let xLeaf = x - 2; xLeaf <= x; xLeaf++) {
+              for (let yLeaf = y; yLeaf <= y + 2; yLeaf++) {
+                if (getCase(xLeaf, yLeaf) === blank && randInt(0, 3) > 0) {
+                  setCase(xLeaf, yLeaf, leaf);
+                }
+              }
+            }
+          }
+        } else if (type === BranchType.branchRight) {
+          setMultiCases(casesForPattern(x, y, "_/"));
+          if (life > 1) {
+            shootsQueue.push({ x: x + 1, y, life: life - 1, type });
+          } else {
+            for (let xLeaf = x; xLeaf <= x + 2; xLeaf++) {
+              for (let yLeaf = y; yLeaf <= y + 2; yLeaf++) {
+                if (getCase(xLeaf, yLeaf) === blank && randInt(0, 3) > 0) {
+                  setCase(xLeaf, yLeaf, leaf);
+                }
+              }
+            }
+          }
+        } else if (type === BranchType.leafPack) {
+          let leaves = 0;
+          for (let yLeaf = y - 2; yLeaf <= y + 1; yLeaf++) {
+            for (let xLeaf = x - 2; xLeaf <= x + 2; xLeaf++) {
+              if (
+                getCase(xLeaf, yLeaf) === blank &&
+                randInt(0, 3) > 0 &&
+                leaves < 7
+              ) {
+                leaves++;
+                setCase(xLeaf, yLeaf, leaf);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   *
+   * @param {number} i
+   * @returns
+   */
+  step(i) {
+    if (i < 0 || i > this.list.length) return;
+    return this.list[i];
+  }
+}
+
 class DeterministicTree {
   constructor(width, height) {
     this.width = width;
@@ -524,6 +746,101 @@ if (document.body.querySelector("#DEBUG")) {
     }
 
     grid.set(x, y, blank);
+    el.value = grid.toString();
+  }
+
+  back.addEventListener("mousedown", () => {
+    backward();
+    intervalId = setInterval(backward, refreshInterval);
+  });
+
+  back.addEventListener("mouseup", () => {
+    clearInterval(intervalId);
+  });
+  back.addEventListener("mouseleave", () => {
+    clearInterval(intervalId);
+  });
+})();
+
+(function () {
+  const el = document.createElement("textarea");
+  const width = 80;
+  const height = 20;
+  el.cols = width;
+  el.rows = height;
+  document.body.append(el);
+
+  const advance = document.createElement("button");
+  advance.textContent = "advance";
+
+  document.body.append(advance);
+
+  const back = document.createElement("button");
+  back.textContent = "back";
+
+  document.body.append(back);
+
+  const tree = new TrunkTree(width, height);
+  tree.growAll();
+  const grid = new Grid(width, height);
+
+  let step = 0;
+
+  let intervalId;
+  const refreshInterval = 50;
+
+  function forward() {
+    const toDraw = tree.step(step);
+    if (toDraw === undefined) {
+      return;
+    }
+
+    if (Array.isArray(toDraw)) {
+      for (const d of toDraw) {
+        const { x, y, char } = d;
+        grid.set(x, y, char);
+      }
+    } else {
+      const { x, y, char } = toDraw;
+      grid.set(x, y, char);
+    }
+
+    step++;
+    el.value = grid.toString();
+  }
+
+  advance.addEventListener("mousedown", () => {
+    forward();
+    intervalId = setInterval(forward, refreshInterval);
+  });
+
+  advance.addEventListener("mouseup", () => {
+    clearInterval(intervalId);
+  });
+  advance.addEventListener("mouseleave", () => {
+    clearInterval(intervalId);
+  });
+
+  function backward() {
+    if (step <= 0) {
+      return;
+    }
+    step--;
+
+    const toErase = tree.step(step);
+    if (toErase === undefined) {
+      return;
+    }
+
+    if (Array.isArray(toErase)) {
+      for (const e of toErase) {
+        const { x, y } = e;
+        grid.set(x, y, blank);
+      }
+    } else {
+      grid.set(toErase.x, toErase.y, blank);
+    }
+
     el.value = grid.toString();
   }
 
