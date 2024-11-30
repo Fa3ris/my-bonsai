@@ -256,40 +256,66 @@ class TrunkTree {
 
     const seedX = Math.round(this.width / 2);
     const seedY = 1;
-    const queue = [
-      { x: seedX, y: seedY, type: BranchType.trunk, life: 12, age: 0 },
-    ];
+
     const predefined = [
       {
         dx: -1,
+        overridePattern: "/~~~\\",
       },
-      { dx: -1 },
-      { dx: -1 },
-      { dx: -1, shoot: BranchType.branchLeft },
-      { dx: 0, shoot: BranchType.branchRight },
-      { dx: 1 },
-      { dx: 1 },
-      { dx: 1 },
-      { dx: 1, shoot: BranchType.branchRight },
-      { dx: 0 },
-      { dx: 0, shoot: BranchType.branchLeft },
-      { dx: 0, shoot: BranchType.leafPack },
+      { dx: -1, overridePattern: "\\|||\\" },
+      { dx: -1, overridePattern: "\\|||\\" },
+      { dx: 0, shoot: BranchType.branchLeft, overridePattern: "/||\\" },
+      { dx: 0, shoot: BranchType.branchRight, overridePattern: "/||\\" },
+      { dx: 1, overridePattern: "/|/", overrideOffsetX: 0 },
+      { dx: 1, overridePattern: "/|/", overrideOffsetX: 0 },
+      {
+        dx: 1,
+        overridePattern: "//",
+        overrideOffsetX: 1,
+      },
+      {
+        dx: 1,
+        shoot: BranchType.branchRight,
+        overridePattern: "//",
+        overrideOffsetX: 0,
+      },
+      { dx: 0, overridePattern: "||", overrideOffsetX: -1 },
+      { dx: 0, overridePattern: "||", shoot: BranchType.leafPack },
+      { dx: 0, overridePattern: "|", shoot: BranchType.leafPack },
+      { dx: 0, shoot: BranchType.leafPack, overridePattern: "|" },
+    ];
+
+    const queue = [
+      {
+        x: seedX,
+        y: seedY,
+        type: BranchType.trunk,
+        life: predefined.length,
+        age: 0,
+      },
     ];
 
     const shoots = [];
     while (queue.length) {
-      const { x, y, life, type, age, dx: prevDx } = queue.shift();
+      const { x, y, life, type, age, dx: prevDx, dy: prevDy } = queue.shift();
 
       if (type === BranchType.trunk) {
-        const { dx, shoot } = predefined.shift();
+        const { dx, shoot, overridePattern, overrideOffsetX } =
+          predefined.shift();
 
         const dy = 1;
         let pattern;
         let offsetX = 0;
-        if (dy == 0) {
-          pattern = "/~";
+        let offsetY = 0;
+        if (dy === 0) {
+          pattern = age < 2 ? "/~~" : "/~";
+          if (prevDx > 0) {
+            offsetX = +1;
+          } else if (prevDx < 0) {
+            offsetX = -1;
+          }
         } else if (dx < 0) {
-          pattern = "\\|";
+          pattern = age <= 2 ? "\\|||\\" : age <= 5 ? "\\||\\" : "\\|\\";
           if (prevDx > 0) {
             offsetX = -1;
           }
@@ -309,15 +335,23 @@ class TrunkTree {
           }
         }
 
+        if (overridePattern) {
+          pattern = overridePattern;
+        }
+        if (overrideOffsetX !== undefined) {
+          offsetX = overrideOffsetX;
+        }
+
         const finalX = x + offsetX;
-        const casesStr = casesForPattern(finalX, y, pattern);
+        const finalY = y + offsetY;
+        const casesStr = casesForPattern(finalX, finalY, pattern);
 
         setMultiCases(casesStr);
 
         if (shoot) {
           if (shoot === BranchType.branchLeft) {
             shoots.push({
-              x: casesStr[0].x - 1,
+              x: casesStr[0].x,
               y,
               type: shoot,
             });
@@ -330,7 +364,7 @@ class TrunkTree {
           } else if (shoot === BranchType.leafPack) {
             shoots.push({
               x,
-              y: y + 1,
+              y,
               type: shoot,
             });
           }
@@ -339,8 +373,9 @@ class TrunkTree {
         if (life > 1) {
           queue.push({
             x: finalX + dx,
-            y: y + dy,
+            y: finalY + dy,
             dx,
+            dy,
             life: life - 1,
             type,
             age: age + 1,
@@ -351,7 +386,7 @@ class TrunkTree {
 
     while (shoots.length) {
       const { x, y, type } = shoots.shift();
-      const shootsQueue = [{ x, y, type, life: 3 }];
+      const shootsQueue = [{ x, y, type, life: 9 }];
 
       while (shootsQueue.length) {
         const { x, y, life, type } = shootsQueue.shift();
@@ -360,12 +395,16 @@ class TrunkTree {
           if (life > 1) {
             shootsQueue.push({ x: x - 1, y, life: life - 1, type });
           } else {
-            for (let xLeaf = x - 2; xLeaf <= x; xLeaf++) {
-              for (let yLeaf = y; yLeaf <= y + 2; yLeaf++) {
-                if (getCase(xLeaf, yLeaf) === blank && randInt(0, 3) > 0) {
-                  setCase(xLeaf, yLeaf, leaf);
-                }
-              }
+            const baseW = randInt(5, 5);
+            const points = trapezoidPoints(
+              baseW,
+              randInt(3, 3),
+              randInt(1, 1),
+              0
+            );
+            for (const p of points) {
+              const [px, py] = p;
+              setCase(x - 1 + px, y + py, leaf);
             }
           }
         } else if (type === BranchType.branchRight) {
@@ -373,27 +412,29 @@ class TrunkTree {
           if (life > 1) {
             shootsQueue.push({ x: x + 1, y, life: life - 1, type });
           } else {
-            for (let xLeaf = x; xLeaf <= x + 2; xLeaf++) {
-              for (let yLeaf = y; yLeaf <= y + 2; yLeaf++) {
-                if (getCase(xLeaf, yLeaf) === blank && randInt(0, 3) > 0) {
-                  setCase(xLeaf, yLeaf, leaf);
-                }
-              }
+            const baseW = randInt(5, 5);
+            const points = trapezoidPoints(
+              baseW,
+              randInt(3, 3),
+              randInt(1, 1),
+              0
+            );
+            for (const p of points) {
+              const [px, py] = p;
+              setCase(x - Math.round((baseW * 3) / 4) + px, y + py, leaf);
             }
           }
         } else if (type === BranchType.leafPack) {
-          let leaves = 0;
-          for (let yLeaf = y - 2; yLeaf <= y + 1; yLeaf++) {
-            for (let xLeaf = x - 2; xLeaf <= x + 2; xLeaf++) {
-              if (
-                getCase(xLeaf, yLeaf) === blank &&
-                randInt(0, 3) > 0 &&
-                leaves < 7
-              ) {
-                leaves++;
-                setCase(xLeaf, yLeaf, leaf);
-              }
-            }
+          const baseW = randInt(7, 9);
+          const points = trapezoidPoints(
+            baseW,
+            randInt(3, 6),
+            randInt(1, 2),
+            0
+          );
+          for (const p of points) {
+            const [px, py] = p;
+            setCase(x - Math.round(baseW / 2) + px, y + py, leaf);
           }
         }
       }
@@ -409,6 +450,20 @@ class TrunkTree {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];
   }
+}
+
+function trapezoidPoints(baseW, topW, height, baseTopOffset) {
+  const points = [];
+  for (let yLeaf = 0, offset = 0; yLeaf <= height; yLeaf++, offset++) {
+    const t = yLeaf / height; // interpolation
+    const widthAtY = Math.round(t * topW + (1 - t) * baseW);
+
+    const offsetAtY = baseTopOffset ? Math.round(baseTopOffset * t) : offset;
+    for (let xLeaf = 0; xLeaf < widthAtY; xLeaf++) {
+      points.push([offsetAtY + xLeaf, yLeaf]);
+    }
+  }
+  return points;
 }
 
 class DeterministicTree {
