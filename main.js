@@ -663,6 +663,10 @@ class Grid {
     this.grid[(this.h - 1 - y) * this.w + x] = c;
   }
 
+  reset() {
+    this.grid = Array(this.w * this.h).fill(blank);
+  }
+
   toString() {
     const rendered = [...Array(this.h)]
       .map((_, row) => {
@@ -834,7 +838,10 @@ if (document.body.querySelector("#DEBUG")) {
   back.textContent = "back";
 
   document.body.append(back);
+  const reset = document.createElement("button");
+  reset.textContent = "reset";
 
+  document.body.append(reset);
   const tree = new TrunkTree(width, height);
   tree.growAll();
   const grid = new Grid(width, height);
@@ -909,6 +916,12 @@ if (document.body.querySelector("#DEBUG")) {
   });
   back.addEventListener("mouseleave", () => {
     clearInterval(intervalId);
+  });
+
+  reset.addEventListener("click", () => {
+    step = 0;
+    grid.reset();
+    el.value = grid.toString();
   });
 })();
 
