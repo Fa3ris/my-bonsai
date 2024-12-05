@@ -279,10 +279,36 @@ class TrunkTree {
         overridePattern: "//",
         overrideOffsetX: 0,
       },
-      { dx: 0, overridePattern: "||", overrideOffsetX: -1 },
-      { dx: 0, overridePattern: "||", shoot: BranchType.leafPack },
-      { dx: 0, overridePattern: "|", shoot: BranchType.leafPack },
-      { dx: 0, shoot: BranchType.leafPack, overridePattern: "|" },
+      {
+        dx: 0,
+        overridePattern: "\\\\",
+        shoot: BranchType.leafPack,
+        overrideOffsetX: -1,
+      },
+      {
+        dx: -2,
+        overridePattern: "\\\\",
+        shoot: BranchType.leafPack,
+        overrideOffsetX: -1,
+      },
+      {
+        dx: 0,
+        shoot: BranchType.leafPack,
+        overridePattern: "_",
+        overrideOffsetX: 0,
+      },
+      {
+        dx: 0,
+        overridePattern: "_",
+        overrideOffsetX: -1,
+        overrideOffsetY: -1,
+      },
+      {
+        dx: 0,
+        overridePattern: "_",
+        overrideOffsetX: -1,
+        overrideOffsetY: -1,
+      },
     ];
 
     const queue = [
@@ -300,7 +326,7 @@ class TrunkTree {
       const { x, y, life, type, age, dx: prevDx, dy: prevDy } = queue.shift();
 
       if (type === BranchType.trunk) {
-        const { dx, shoot, overridePattern, overrideOffsetX } =
+        const { dx, shoot, overridePattern, overrideOffsetX, overrideOffsetY } =
           predefined.shift();
 
         const dy = 1;
@@ -342,6 +368,9 @@ class TrunkTree {
           offsetX = overrideOffsetX;
         }
 
+        if (overrideOffsetY !== undefined) {
+          offsetY = overrideOffsetY;
+        }
         const finalX = x + offsetX;
         const finalY = y + offsetY;
         const casesStr = casesForPattern(finalX, finalY, pattern);
@@ -386,14 +415,58 @@ class TrunkTree {
 
     while (shoots.length) {
       const { x, y, type } = shoots.shift();
-      const shootsQueue = [{ x, y, type, life: 9 }];
+      const shootsQueue = [{ x, y, type, life: 6 }];
+
+      let currX = x;
+      let currY = y;
+      if (type === BranchType.branchLeft) {
+        setMultiCases([]);
+        currX--;
+        setMultiCases([]);
+
+        currX--;
+        setMultiCases([
+          { x: currX, y: currY, char: "\\" },
+          { x: currX - 1, y: currY + 1, char: leaf },
+        ]);
+
+        currX -= 1;
+        setMultiCases([
+          { x: currX, y: currY, char: "_" },
+          { x: currX, y: currY - 1, char: leaf },
+        ]);
+        currX -= 1;
+        setMultiCases([{ x: currX, y: currY, char: "_" }]);
+        currX -= 1;
+        setMultiCases([{ x: currX, y: currY, char: "_" }]);
+        currX -= 1;
+        setMultiCases([
+          { x: currX, y: currY - 1, char: "/" },
+          { x: currX - 1, y: currY - 2, char: leaf },
+        ]);
+        setMultiCases([{ x: currX, y: currY, char: "_" }]);
+        currX -= 1;
+        setMultiCases([{ x: currX, y: currY, char: "_" }]);
+        currX -= 1;
+        setMultiCases([{ x: currX, y: currY, char: "_" }]);
+
+        const baseW = randInt(7, 9);
+        const points = trapezoidPoints(baseW, randInt(3, 6), randInt(1, 2), 0);
+        for (const p of points) {
+          const [px, py] = p;
+          setCase(currX - Math.round(baseW / 2) + px, currY - 1 + py, leaf);
+        }
+
+        continue;
+      }
 
       while (shootsQueue.length) {
         const { x, y, life, type } = shootsQueue.shift();
         if (type === BranchType.branchLeft) {
-          setMultiCases(casesForPattern(x, y, "\\_"));
+          setMultiCases(casesForPattern(x, y, "\\="));
           if (life > 1) {
-            shootsQueue.push({ x: x - 1, y, life: life - 1, type });
+            const dy = randInt(0, 1) < 1 ? 0 : 1;
+            shootsQueue.push({ x: x - 1, y: y + dy, life: life - 1, type });
           } else {
             const baseW = randInt(5, 5);
             const points = trapezoidPoints(
@@ -408,7 +481,7 @@ class TrunkTree {
             }
           }
         } else if (type === BranchType.branchRight) {
-          setMultiCases(casesForPattern(x, y, "_/"));
+          setMultiCases(casesForPattern(x, y, "=/"));
           if (life > 1) {
             shootsQueue.push({ x: x + 1, y, life: life - 1, type });
           } else {
@@ -854,7 +927,7 @@ if (document.body.querySelector("#DEBUG")) {
   function forward() {
     const toDraw = tree.step(step);
     if (toDraw === undefined) {
-      return;
+      return false;
     }
 
     if (Array.isArray(toDraw)) {
@@ -869,7 +942,10 @@ if (document.body.querySelector("#DEBUG")) {
 
     step++;
     el.value = grid.toString();
+    return true;
   }
+
+  while (forward()) {}
 
   advance.addEventListener("mousedown", () => {
     forward();
