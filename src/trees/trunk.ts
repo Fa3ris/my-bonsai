@@ -7,6 +7,26 @@ const leftBranch = "/";
 const rightBranch = "\\";
 const lateral = "~";
 
+
+function trapezoidPoints(
+  baseW: number,
+  topW: number,
+  height: number,
+  baseTopOffset: number
+) {
+  const points: [number, number][] = [];
+  for (let yLeaf = 0, offset = 0; yLeaf <= height; yLeaf++, offset++) {
+    const t = yLeaf / height; // interpolation
+    const widthAtY = Math.round(t * topW + (1 - t) * baseW);
+
+    const offsetAtY = baseTopOffset ? Math.round(baseTopOffset * t) : offset;
+    for (let xLeaf = 0; xLeaf < widthAtY; xLeaf++) {
+      points.push([offsetAtY + xLeaf, yLeaf]);
+    }
+  }
+  return points;
+}
+
 /**
  *
  * @param {number} x
@@ -51,7 +71,10 @@ function randInt(min: number, max: number) {
 }
 
 export class TrunkTree {
-  private list: any[];
+  private list: (
+    | { x: number; y: number; char: string }
+    | { x: number; y: number; char: string }[]
+  )[];
   private grid: string[];
   constructor(private width: number, private height: number) {
     this.width = width;
@@ -66,27 +89,6 @@ export class TrunkTree {
   }
 
   growAll() {
-    function trapezoidPoints(
-      baseW: number,
-      topW: number,
-      height: number,
-      baseTopOffset: number
-    ) {
-      const points: [number, number][] = [];
-      for (let yLeaf = 0, offset = 0; yLeaf <= height; yLeaf++, offset++) {
-        const t = yLeaf / height; // interpolation
-        const widthAtY = Math.round(t * topW + (1 - t) * baseW);
-
-        const offsetAtY = baseTopOffset
-          ? Math.round(baseTopOffset * t)
-          : offset;
-        for (let xLeaf = 0; xLeaf < widthAtY; xLeaf++) {
-          points.push([offsetAtY + xLeaf, yLeaf]);
-        }
-      }
-      return points;
-    }
-
     const getIndex = (x: number, y: number) =>
       (this.height - 1 - y) * this.width + x;
 
@@ -108,12 +110,6 @@ export class TrunkTree {
 
     const seedX = Math.round(this.width / 2);
     const seedY = 1;
-
-    /*
-  
-      trunk
-      which spawns other branches
-      */
 
     const predefined = [
       {
@@ -375,11 +371,6 @@ export class TrunkTree {
     }
   }
 
-  /**
-   *
-   * @param {number} i
-   * @returns
-   */
   step(i: number) {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];

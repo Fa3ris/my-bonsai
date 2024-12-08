@@ -5,7 +5,9 @@ export class Grid {
   constructor(private readonly w: number, private readonly h: number) {
     this.grid = Array(w * h).fill(blank);
   }
-
+  /**
+   * (0, 0) is at bottom left
+   */
   set(x: number, y: number, c: string) {
     this.grid[(this.h - 1 - y) * this.w + x] = c;
   }
