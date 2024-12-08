@@ -8,3 +8,5 @@ Features
 - [ ] save generated tree
 - [ ] colored display
 - [ ] loop display
+- [ ] trunk/branch thickness should decrease from base to tip
+- [ ] externalize the conditions for growing

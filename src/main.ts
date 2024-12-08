@@ -5,10 +5,9 @@ const leftBranch = "/";
 const rightBranch = "\\";
 const lateral = "~";
 
-
 // hash function to generate the seed
 // https://stackoverflow.com/a/47593316
-function cyrb128(str) {
+function cyrb128(str: string) {
   let h1 = 1779033703,
     h2 = 3144134277,
     h3 = 1013904242,
@@ -29,7 +28,7 @@ function cyrb128(str) {
 }
 
 // create random generator function, the seed is split in 4 numbers
-function sfc32(a, b, c, d) {
+function sfc32(a: number, b: number, c: number, d: number) {
   return function () {
     a |= 0;
     b |= 0;
@@ -54,7 +53,7 @@ const getRand = sfc32(seed[0], seed[1], seed[2], seed[3]);
  * @param {*} max inclusive
  * @returns
  */
-function randInt(min, max) {
+function randInt(min: number, max: number) {
   const minCeiled = Math.ceil(Math.min(min, max));
   const maxFloored = Math.floor(Math.max(min, max));
   return minCeiled + Math.floor(getRand() * (maxFloored - minCeiled + 1));
@@ -87,23 +86,26 @@ const xDirs = [-2, -1, 0, 1, 2];
 const yDirs = [0, 1];
 
 class RandTree {
-  constructor(width, height) {
+  private list: any[];
+  private grid: string[];
+  constructor(private width: number, private height: number) {
     this.width = width;
     this.height = height;
     this.list = [];
     this.grid = Array(width * height).fill(blank);
   }
   growAll() {
-    const getIndex = (x, y) => (this.height - 1 - y) * this.width + x;
+    const getIndex = (x: number, y: number) =>
+      (this.height - 1 - y) * this.width + x;
 
-    const setCase = (x, y, char) => {
+    const setCase = (x: number, y: number, char: string) => {
       this.list.push({ x, y, c: char });
       this.grid[getIndex(x, y)] = char;
     };
 
-    const getCase = (x, y) => this.grid[getIndex(x, y)];
+    const getCase = (x: number, y: number) => this.grid[getIndex(x, y)];
 
-    const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+    const getChar = (dx: number, dy: number) => charCode[dx + dy * yCodeOffset];
 
     const seedX = Math.round(this.width / 2);
     const seedY = 1;
@@ -111,7 +113,7 @@ class RandTree {
     const maxBranches = 1024;
     let branches = 0;
     while (queue.length) {
-      const { x, y, life } = queue.shift();
+      const { x, y, life } = queue.shift()!;
 
       if (life < 1) {
         throw new Error();
@@ -146,7 +148,7 @@ class RandTree {
       }
 
       const newX = x + dx;
-      const newY = y + dy;
+      const newY = y + dy!;
 
       const oob =
         newX <= 0 ||
@@ -159,7 +161,7 @@ class RandTree {
       }
 
       if (getCase(x, y) === blank) {
-        const ch = life === 1 ? leaf : getChar(dx, dy);
+        const ch = life === 1 ? leaf : getChar(dx, dy!);
         setCase(x, y, ch);
       }
 
@@ -183,12 +185,11 @@ class RandTree {
    * @param {number} i
    * @returns
    */
-  step(i) {
+  step(i: number) {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];
   }
 }
-
 
 const BranchType = {
   trunk: 0,
@@ -205,7 +206,7 @@ const BranchType = {
  * @param {string} pattern
  * @returns array of cases
  */
-function casesForPattern(x, y, pattern) {
+function casesForPattern(x: number, y: number, pattern: string) {
   const cases = [];
   const tab = pattern.split("");
   const middle = Math.floor(tab.length / 2);
@@ -219,22 +220,25 @@ function casesForPattern(x, y, pattern) {
 }
 
 class TrunkTree {
-  constructor(width, height) {
+  private list: any[];
+  private grid: string[];
+  constructor(private width: number, private height: number) {
     this.width = width;
     this.height = height;
     this.list = [];
     this.grid = Array(width * height).fill(blank);
   }
 
-  grow(grid) {
+  grow(grid: any) {
     grid.set || grid.setMulti;
     return true ? [this, class NewBranch {}] : undefined;
   }
 
   growAll() {
-    const getIndex = (x, y) => (this.height - 1 - y) * this.width + x;
+    const getIndex = (x: number, y: number) =>
+      (this.height - 1 - y) * this.width + x;
 
-    const setCase = (x, y, char) => {
+    const setCase = (x: number, y: number, char: string) => {
       this.list.push({ x, y, char });
       this.grid[getIndex(x, y)] = char;
     };
@@ -243,24 +247,30 @@ class TrunkTree {
      *
      * @param {{x: number, y: number, char: string}[]} cases
      */
-    const setMultiCases = (cases) => {
+    const setMultiCases = (cases: { x: number; y: number; char: string }[]) => {
       this.list.push(cases);
       for (const v of cases) {
         this.grid[getIndex(v.x, v.y)] = v.char;
       }
     };
 
-    const getCase = (x, y) => this.grid[getIndex(x, y)];
+    const getCase = (x: number, y: number) => this.grid[getIndex(x, y)];
 
-    const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+    const getChar = (dx: number, dy: number) => charCode[dx + dy * yCodeOffset];
 
     const seedX = Math.round(this.width / 2);
     const seedY = 1;
 
+    /*
+
+    trunk
+    which spawns other branches
+    */
+
     const predefined = [
       {
         dx: -1,
-        overridePattern: "/~~~\\",
+        overridePattern: "/~~~~\\",
       },
       { dx: -1, overridePattern: "\\|||\\" },
       { dx: -1, overridePattern: "\\|||\\" },
@@ -315,6 +325,8 @@ class TrunkTree {
       {
         x: seedX,
         y: seedY,
+        dx: 0,
+        dy: 0,
         type: BranchType.trunk,
         life: predefined.length,
         age: 0,
@@ -323,40 +335,41 @@ class TrunkTree {
 
     const shoots = [];
     while (queue.length) {
-      const { x, y, life, type, age, dx: prevDx, dy: prevDy } = queue.shift();
+      const { x, y, life, type, age, dx: prevDx, dy: prevDy } = queue.shift()!;
 
       if (type === BranchType.trunk) {
         const { dx, shoot, overridePattern, overrideOffsetX, overrideOffsetY } =
-          predefined.shift();
+          predefined.shift()!;
 
-        const dy = 1;
-        let pattern;
+        let dy = 1;
+        let pattern: string = "";
         let offsetX = 0;
         let offsetY = 0;
+        const prevDxN = Number(prevDx);
         if (dy === 0) {
           pattern = age < 2 ? "/~~" : "/~";
-          if (prevDx > 0) {
+          if (prevDxN > 0) {
             offsetX = +1;
-          } else if (prevDx < 0) {
+          } else if (prevDxN < 0) {
             offsetX = -1;
           }
         } else if (dx < 0) {
           pattern = age <= 2 ? "\\|||\\" : age <= 5 ? "\\||\\" : "\\|\\";
-          if (prevDx > 0) {
+          if (prevDxN > 0) {
             offsetX = -1;
           }
         } else if (dx == 0) {
           pattern = "/|\\";
-          if (prevDx < 0) {
+          if (prevDxN < 0) {
             offsetX = 1;
-          } else if (prevDx > 0) {
+          } else if (prevDxN > 0) {
             offsetX = -2;
           }
         } else if (dx > 0) {
           pattern = "|/";
           if (prevDx === 0) {
             offsetX = 1;
-          } else if (prevDx < 0) {
+          } else if (prevDxN < 0) {
             offsetX = 1;
           }
         }
@@ -386,7 +399,7 @@ class TrunkTree {
             });
           } else if (shoot === BranchType.branchRight) {
             shoots.push({
-              x: casesStr.at(-1).x + 1,
+              x: casesStr.at(-1)!.x + 1,
               y,
               type: shoot,
             });
@@ -414,15 +427,22 @@ class TrunkTree {
     }
 
     while (shoots.length) {
-      const { x, y, type } = shoots.shift();
+      const { x, y, type } = shoots.shift()!;
       const shootsQueue = [{ x, y, type, life: 6 }];
 
       let currX = x;
       let currY = y;
       if (type === BranchType.branchLeft) {
-        setMultiCases([]);
+        setMultiCases([
+          { x: currX, y: currY, char: "_" },
+          // { x: currX - 1, y: currY + 1, char: leaf },
+        ]);
         currX--;
-        setMultiCases([]);
+        setMultiCases([
+          { x: currX, y: currY, char: "_" },
+          // { x: currX - 1, y: currY + 1, char: leaf },
+        ]);
+        // setMultiCases([]);
 
         currX--;
         setMultiCases([
@@ -451,7 +471,7 @@ class TrunkTree {
         setMultiCases([{ x: currX, y: currY, char: "_" }]);
 
         const baseW = randInt(7, 9);
-        const points = trapezoidPoints(baseW, randInt(3, 6), randInt(1, 2), 0);
+        const points = trapezoidPoints(baseW, randInt(1, 2), randInt(1, 2), 0);
         for (const p of points) {
           const [px, py] = p;
           setCase(currX - Math.round(baseW / 2) + px, currY - 1 + py, leaf);
@@ -461,7 +481,7 @@ class TrunkTree {
       }
 
       while (shootsQueue.length) {
-        const { x, y, life, type } = shootsQueue.shift();
+        const { x, y, life, type } = shootsQueue.shift()!;
         if (type === BranchType.branchLeft) {
           setMultiCases(casesForPattern(x, y, "\\="));
           if (life > 1) {
@@ -501,7 +521,7 @@ class TrunkTree {
           const baseW = randInt(7, 9);
           const points = trapezoidPoints(
             baseW,
-            randInt(3, 6),
+            randInt(3, 3),
             randInt(1, 2),
             0
           );
@@ -519,13 +539,18 @@ class TrunkTree {
    * @param {number} i
    * @returns
    */
-  step(i) {
+  step(i: number) {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];
   }
 }
 
-function trapezoidPoints(baseW, topW, height, baseTopOffset) {
+function trapezoidPoints(
+  baseW: number,
+  topW: number,
+  height: number,
+  baseTopOffset: number
+) {
   const points = [];
   for (let yLeaf = 0, offset = 0; yLeaf <= height; yLeaf++, offset++) {
     const t = yLeaf / height; // interpolation
@@ -540,10 +565,9 @@ function trapezoidPoints(baseW, topW, height, baseTopOffset) {
 }
 
 class DeterministicTree {
-  constructor(width, height) {
+  constructor(private width: number, private height: number) {
     this.width = width;
     this.height = height;
-    this.list = [];
   }
 
   growAll() {
@@ -555,7 +579,11 @@ class DeterministicTree {
    * @param {number} i
    * @returns
    */
-  step(i) {
+  step(
+    i: number
+  ):
+    | { x: number; y: number; c: string; nextTime: number | undefined }
+    | undefined {
     if (i < 0 || i > this.width - 1 || i > this.height - 1) return;
     return {
       x: i,
@@ -571,18 +599,18 @@ class DeterministicTree {
  * @param {number} height
  * @returns {{lines: string[], seedY: number }}
  */
-function generateTree(width, height) {
+function generateTree(width: number, height: number) {
   const lines = Array(width * height).fill(blank);
 
-  const getIndex = (x, y) => (height - 1 - y) * width + x;
+  const getIndex = (x: number, y: number) => (height - 1 - y) * width + x;
 
-  const setCase = (x, y, char) => {
+  const setCase = (x: number, y: number, char: string) => {
     lines[getIndex(x, y)] = char;
   };
 
-  const getCase = (x, y) => lines[getIndex(x, y)];
+  const getCase = (x: number, y: number) => lines[getIndex(x, y)];
 
-  const getChar = (dx, dy) => charCode[dx + dy * yCodeOffset];
+  const getChar = (dx: number, dy: number) => charCode[dx + dy * yCodeOffset];
 
   const seedX = Math.round(width / 2);
   const seedY = 1;
@@ -590,7 +618,7 @@ function generateTree(width, height) {
   const maxBranches = 1024;
   let branches = 0;
   while (queue.length) {
-    const { x, y, life } = queue.shift();
+    const { x, y, life } = queue.shift()!;
 
     if (life < 1) {
       throw new Error();
@@ -625,7 +653,7 @@ function generateTree(width, height) {
     }
 
     const newX = x + dx;
-    const newY = y + dy;
+    const newY = y + dy!;
 
     const oob =
       newX <= 0 || newX >= width - 1 || newY <= 0 || newY >= height - 1;
@@ -635,7 +663,7 @@ function generateTree(width, height) {
     }
 
     if (getCase(x, y) === blank) {
-      const ch = life === 1 ? leaf : getChar(dx, dy);
+      const ch = life === 1 ? leaf : getChar(dx, dy!);
       setCase(x, y, ch);
     }
 
@@ -677,7 +705,7 @@ if (document.body.querySelector("#DEBUG")) {
     foo[(height - 1 - (height - 1)) * width + 0] = "A";
     foo[(height - 1 - (height - 1)) * width + width - 1] = "B";
 
-    const displayTree = (y) => {
+    const displayTree = (y: number) => {
       if (y > height) {
         return;
       }
@@ -704,7 +732,7 @@ if (document.body.querySelector("#DEBUG")) {
 
   const { lines: tree } = generateTree(width, height);
 
-  const displayTree = (y) => {
+  const displayTree = (y: number) => {
     if (y > height) {
       return;
     }
@@ -721,18 +749,12 @@ if (document.body.querySelector("#DEBUG")) {
 })();
 
 class Grid {
-  constructor(w, h) {
-    this.w = w;
-    this.h = h;
+  private grid: string[];
+  constructor(private readonly w: number, private readonly h: number) {
     this.grid = Array(w * h).fill(blank);
   }
-  /**
-   *
-   * @param {number} x
-   * @param {number} y
-   * @param {string} c
-   */
-  set(x, y, c) {
+
+  set(x: number, y: number, c: string) {
     this.grid[(this.h - 1 - y) * this.w + x] = c;
   }
 
@@ -764,15 +786,15 @@ if (document.body.querySelector("#DEBUG")) {
     const tree = new DeterministicTree(width, height);
 
     const grid = new Grid(width, height);
-    const { x, y, c } = tree.step(0);
+    const { x, y, c } = tree.step(0)!;
     grid.set(x, y, c);
 
-    const displayTree = (step) => {
+    const displayTree = (step: number) => {
       const { x, y, c, nextTime } = tree.step(step) || {};
       if (x === undefined) {
         return;
       }
-      grid.set(x, y, c);
+      grid.set(x, y!, c!);
 
       setTimeout(() => {
         el.value = grid.toString();
@@ -799,7 +821,7 @@ if (document.body.querySelector("#DEBUG")) {
   const { x, y, c } = tree.step(0);
   grid.set(x, y, c);
 
-  const displayTree = (step) => {
+  const displayTree = (step: number) => {
     const { x, y, c, nextTime } = tree.step(step) || {};
     if (x === undefined) {
       return;
@@ -841,7 +863,7 @@ if (document.body.querySelector("#DEBUG")) {
 
   let step = 0;
 
-  let intervalId;
+  let intervalId: number;
   const refreshInterval = 50;
 
   function forward() {
@@ -921,7 +943,7 @@ if (document.body.querySelector("#DEBUG")) {
 
   let step = 0;
 
-  let intervalId;
+  let intervalId: number;
   const refreshInterval = 50;
 
   function forward() {
@@ -1001,7 +1023,7 @@ if (document.body.querySelector("#DEBUG")) {
   });
 })();
 
-function buffer(y, height, width, tree) {
+function buffer(y: number, height: number, width: number, tree: string[]) {
   const blanks = Array(height - y)
     .fill(Array(width).fill("*").join(""))
     .join("\n");
