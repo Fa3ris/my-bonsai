@@ -3,7 +3,22 @@ import { TrunkTree } from "../trees/trunk";
 
 const blank = " ";
 
-export function bonsaiWithControls() {
+type Step =
+  | { x: number; y: number; char: string }
+  | { x: number; y: number; char: string }[]
+  | undefined;
+
+type Growable = {
+  growAll(): void;
+  step(i: number): Step;
+};
+
+const getTreeDefault = (width: number, height: number) =>
+  new TrunkTree(width, height);
+
+export function bonsaiWithControls(
+  getTree: (width: number, height: number) => Growable = getTreeDefault
+) {
   const el = document.createElement("textarea");
   const width = 80;
   const height = 20;
@@ -24,7 +39,7 @@ export function bonsaiWithControls() {
   reset.textContent = "reset";
 
   document.body.append(reset);
-  const tree = new TrunkTree(width, height);
+  const tree = getTree(width, height);
   tree.growAll();
   const grid = new Grid(width, height);
 

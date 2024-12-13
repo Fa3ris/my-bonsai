@@ -4,6 +4,7 @@ import { drawFirstTree } from "./draw/first";
 import { drawGridCorners } from "./draw/grid-corners";
 import { drawRandomTree } from "./draw/random";
 import { randomTreeWithControls } from "./draw/random-with-controls";
+import { Bonsai } from "./trees/bonsai";
 
 if (document.body.querySelector("#DEBUG")) {
   drawGridCorners();
@@ -20,3 +21,6 @@ drawRandomTree();
 randomTreeWithControls();
 
 bonsaiWithControls();
+
+
+bonsaiWithControls((width, height) => new Bonsai(width, height));
