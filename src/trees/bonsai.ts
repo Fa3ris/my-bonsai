@@ -46,6 +46,8 @@ type TrunkSection = BaseSection & {
 type BranchSection = BaseSection & {
   type: SectionType;
   element: typeof BRANCH;
+  target: { x: number; y: number };
+  branchChar?: string;
 };
 
 type LeafSection = BaseSection & {
@@ -121,7 +123,13 @@ export class Bonsai {
       case LEAF:
         return [{ x: section.x, y: section.y, char: "&" }];
       case BRANCH:
-        return [{ x: section.x, y: section.y, char: "*" }];
+        return [
+          {
+            x: section.x,
+            y: section.y,
+            char: section.branchChar ? section.branchChar : "_",
+          },
+        ];
     }
   }
 
@@ -158,7 +166,7 @@ export class Bonsai {
   ): [Section] | [Section, Section] | undefined {
     const age = section.age;
     const element = section.element;
-    // if (age >= 9) return undefined;
+    if (age >= 20) return undefined;
     // if (element !== "trunk") return undefined;
 
     switch (element) {
@@ -177,8 +185,79 @@ export class Bonsai {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];
   }
-  processBranch(section: Section): [Section] | [Section, Section] | undefined {
-    return undefined;
+
+  processBranch(
+    section: BranchSection
+  ): [Section] | [Section, Section] | undefined {
+    const toGrow = section.toGrow;
+    const sectionDies = toGrow <= 1;
+    if (sectionDies) {
+      return this.tryNewBranchSection(section);
+    }
+    let x = section.x;
+    let y = section.y;
+    switch (section.type) {
+      case SectionType.upward:
+        y++;
+        break;
+      case SectionType.upLeft:
+        y++;
+        x--;
+        break;
+      case SectionType.upRight:
+        x++;
+        y++;
+        break;
+      case SectionType.left:
+        x--;
+        break;
+      default:
+        console.log("unknown type", section.type);
+    }
+
+    return [
+      { ...section, x, y, age: section.age + 1, toGrow: section.toGrow - 1 },
+    ];
+  }
+
+  tryNewBranchSection(section: BranchSection): [BranchSection] | undefined {
+    const x = section.x;
+    const y = section.y;
+    let newX = x;
+    let newY = y;
+    const tX = section.target.x;
+    const tY = section.target.y;
+    const manhattanDist = Math.abs(x - tX) + Math.abs(y - tY);
+
+    let type: SectionType = SectionType.left;
+    let toGrow = 3;
+
+    let branchChar = undefined;
+    if (section.type === SectionType.left) {
+      if (x > tX) {
+        if (y < tY) {
+          type = SectionType.upLeft;
+          toGrow = 1;
+          branchChar = "\\";
+        } else if (y > tY) {
+        }
+      }
+    } else if (section.type === SectionType.upLeft) {
+      type = SectionType.left;
+      if (x > tX) {
+        newX--;
+        if (y < tY) {
+          newY++;
+        } else if (y > tY) {
+        }
+      }
+    }
+    return [
+      this.initBranch(
+        { age: section.age, target: section.target },
+        { x: newX, y: newY, type, toGrow, branchChar }
+      ),
+    ];
   }
 
   processLeaf(section: Section): [Section] | [Section, Section] | undefined {
@@ -213,9 +292,14 @@ export class Bonsai {
     return [{ ...section, x, y, age: section.age + 1, toGrow: toGrow - 1 }];
   }
 
-  initBranch(override: Partial<BranchSection>): BranchSection {
+  initBranch(
+    init: { age: number; target: { x: number; y: number } },
+    override: Partial<Omit<BranchSection, "age" | "target">>
+  ): BranchSection {
+    const { age, target } = init;
     return {
-      age: 0,
+      age: age + 1,
+      target,
       element: BRANCH,
       thresholdToSplit: 40,
       toGrow: 3,
@@ -246,15 +330,27 @@ export class Bonsai {
     const x = section.x;
     const y = section.y;
     const width = section.width;
-    if (width <= 0)
-      return [this.initBranch({ x: x - 1, y }), this.initLeaf({ x: x + 1, y })];
-    const element = section.element;
+    const cannotCreateTrunkSection = section.width <= 0;
+    if (cannotCreateTrunkSection)
+      return [
+        this.initBranch(
+          {
+            age: section.age,
+            target: {
+              x: x - 10,
+              y: y + 2,
+            },
+          },
+          { x: x - 1, y }
+        ),
+        this.initLeaf({ x: x + 1, y }),
+      ];
     const newAge = section.age + 1;
     const newWidth = Math.max(0, width - 1);
     const baseSection = {
       age: newAge,
       width: newWidth,
-      element,
+      element: section.element,
       thresholdToSplit: section.thresholdToSplit - 10,
     } as const;
     switch (section.type) {
