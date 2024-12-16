@@ -12,6 +12,22 @@ const TRUNK = "trunk";
 const BRANCH = "branch";
 const LEAF = "leaf";
 
+
+/*
+
+pass a generator to the class so we can fake it
+
+to randomize / configure
+when/to where branch out from trunk
+which branch target to reach
+when branch splits
+rate of growth of section - do not grow on each turn - if young can grow easily
+
+
+time: set when case should appear
+
+*/
+
 type RENDER =
   | "/    \\"
   | "\\   \\"
@@ -32,6 +48,7 @@ type BaseSection = {
   thresholdToSplit: number;
   toGrow: number;
   width: number;
+  time: number;
 };
 type TrunkSection = BaseSection & {
   type: Extract<
@@ -43,10 +60,12 @@ type TrunkSection = BaseSection & {
   element: typeof TRUNK;
 };
 
+type Target = { x: number; y: number };
+
 type BranchSection = BaseSection & {
   type: SectionType;
   element: typeof BRANCH;
-  target: { x: number; y: number };
+  target: Target;
   branchChar?: string;
 };
 
@@ -93,6 +112,7 @@ export class Bonsai {
           toGrow: 0,
           width: 4,
           age: 0,
+          time: 0,
         },
       ],
     ];
@@ -166,7 +186,7 @@ export class Bonsai {
   ): [Section] | [Section, Section] | undefined {
     const age = section.age;
     const element = section.element;
-    if (age >= 20) return undefined;
+    if (age >= 23) return undefined;
     // if (element !== "trunk") return undefined;
 
     switch (element) {
@@ -184,6 +204,10 @@ export class Bonsai {
   step(i: number): (typeof this.list)[number] | undefined {
     if (i < 0 || i > this.list.length) return;
     return this.list[i];
+  }
+
+  frame(time: number): (typeof this.list)[number] | undefined {
+    return undefined;
   }
 
   processBranch(
@@ -220,14 +244,15 @@ export class Bonsai {
     ];
   }
 
-  tryNewBranchSection(section: BranchSection): [BranchSection] | undefined {
+  tryNewBranchSection(
+    section: BranchSection
+  ): [BranchSection] | [BranchSection, BranchSection] | undefined {
     const x = section.x;
     const y = section.y;
     let newX = x;
     let newY = y;
     const tX = section.target.x;
     const tY = section.target.y;
-    const manhattanDist = Math.abs(x - tX) + Math.abs(y - tY);
 
     let type: SectionType = SectionType.left;
     let toGrow = 3;
@@ -252,12 +277,34 @@ export class Bonsai {
         }
       }
     }
+
+    const manhattanDist = Math.abs(x - tX) + Math.abs(y - tY);
+    if (manhattanDist === 5) {
+      return [
+        this.initBranch(
+          { age: section.age, target: section.target },
+          { x: newX, y: newY, type, toGrow, branchChar }
+        ),
+        this.initBranch(
+          { age: section.age, target: this.generateTarget(section) },
+          { x: newX, y: newY, type, toGrow, branchChar }
+        ),
+      ];
+    }
+
     return [
       this.initBranch(
         { age: section.age, target: section.target },
         { x: newX, y: newY, type, toGrow, branchChar }
       ),
     ];
+  }
+
+  generateTarget(section: BranchSection): Target {
+    let { x, y } = section.target;
+    y--;
+    x -= 2;
+    return { x, y };
   }
 
   processLeaf(section: Section): [Section] | [Section, Section] | undefined {
@@ -305,6 +352,7 @@ export class Bonsai {
       toGrow: 3,
       type: SectionType.left,
       width: 1,
+      time: 0,
       x: 0,
       y: 0,
       ...override,
@@ -318,6 +366,7 @@ export class Bonsai {
       thresholdToSplit: 40,
       toGrow: 3,
       width: 1,
+      time: 0,
       x: 0,
       y: 0,
       ...override,
@@ -352,6 +401,7 @@ export class Bonsai {
       width: newWidth,
       element: section.element,
       thresholdToSplit: section.thresholdToSplit - 10,
+      time: 0,
     } as const;
     switch (section.type) {
       case SectionType.upward: {
