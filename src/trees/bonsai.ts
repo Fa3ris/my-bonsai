@@ -185,10 +185,11 @@ export class Bonsai {
   }
 
   casesForTrunk(section: TrunkSection): Case[] {
-    // FIX one char per case
     if (section.age === 0) {
       const char = `/${" ".repeat(section.width)}\\`;
-      return [{ x: section.x, y: section.y, char }];
+      return char
+        .split("")
+        .map((ch, index) => ({ x: section.x + index, y: section.y, char: ch }));
     }
 
     let char: string;
@@ -209,7 +210,9 @@ export class Bonsai {
         char = `|${" ".repeat(section.width)}|`;
     }
 
-    return [{ x: section.x, y: section.y, char }];
+    return char
+      .split("")
+      .map((ch, index) => ({ x: section.x + index, y: section.y, char: ch }));
   }
 
   growSection(
@@ -485,7 +488,7 @@ export class Bonsai {
             id: section.id,
             generation: 1,
           },
-          { x: x + 1, y, type: SectionType.right }
+          { x: x + 2, y, type: SectionType.right }
         ),
       ];
     const newAge = section.age + 1;
