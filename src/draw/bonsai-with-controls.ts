@@ -28,22 +28,28 @@ export function bonsaiWithControls(
 
   const advance = document.createElement("button");
   advance.textContent = "advance";
-
   document.body.append(advance);
 
   const back = document.createElement("button");
   back.textContent = "back";
-
   document.body.append(back);
+
   const reset = document.createElement("button");
   reset.textContent = "reset";
-
   document.body.append(reset);
+
+  let step = 0;
+  const stepSpan = document.createElement("div");
+  stepSpan.textContent = `step ${step}`;
+  document.body.append(stepSpan);
+
+  function redrawStep() {
+    stepSpan.textContent = `step ${step}`;
+  }
+
   const tree = getTree(width, height);
   tree.growAll();
   const grid = new Grid(width, height);
-
-  let step = 0;
 
   let intervalId: number;
   const refreshInterval = 50;
@@ -65,6 +71,7 @@ export function bonsaiWithControls(
     }
 
     step++;
+    redrawStep();
     el.value = grid.toString();
     return true;
   }
@@ -89,6 +96,7 @@ export function bonsaiWithControls(
     }
     step--;
 
+    redrawStep();
     const toErase = tree.step(step);
     if (toErase === undefined) {
       return;
@@ -120,6 +128,7 @@ export function bonsaiWithControls(
 
   reset.addEventListener("click", () => {
     step = 0;
+    redrawStep();
     grid.reset();
     el.value = grid.toString();
   });
