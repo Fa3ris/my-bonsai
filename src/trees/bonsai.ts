@@ -168,11 +168,14 @@ export class Bonsai {
       case LEAF:
         return [{ x, y, char: "&" }];
       case BRANCH:
+        const { type } = section;
         const char =
-          section.type === SectionType.upLeft
+          type === SectionType.upLeft
             ? "\\"
-            : section.type === SectionType.upRight
+            : type === SectionType.upRight
             ? "/"
+            : type === SectionType.left
+            ? "_"
             : "_";
         return [
           {
@@ -293,6 +296,8 @@ export class Bonsai {
     const shouldGrowDiagonally = y < tY;
     const targetIsToTheRight = x < tX;
 
+    // can only grow in expanding direction?? no
+
     let newType: SectionType;
     let toGrow = 3;
     if (shouldGrowDiagonally) {
@@ -341,7 +346,7 @@ export class Bonsai {
       generation,
     } = section;
 
-    if (generation > 15) {
+    if (generation > 21) {
       return undefined;
     }
 
@@ -464,33 +469,31 @@ export class Bonsai {
     const y = section.y;
     const width = section.width;
     const cannotCreateTrunkSection = section.width <= 0;
-    if (cannotCreateTrunkSection)
-      return [
-        this.initBranch(
-          {
-            age: section.age,
-            target: {
-              x: x - 10,
-              y: y + 2,
-            },
-            id: section.id,
-            generation: 1,
-          },
-          { x: x - 1, y }
-        ),
-        this.initBranch(
-          {
-            age: section.age,
-            target: {
-              x: x + 10,
-              y: y + 2,
-            },
-            id: section.id,
-            generation: 1,
-          },
-          { x: x + 2, y, type: SectionType.right }
-        ),
-      ];
+    if (cannotCreateTrunkSection) {
+      // TODO choose target in a random point in the proximity - do not go back
+      const b1 = this.continueSection(
+        {
+          ...section,
+          target: { x: 0, y: 0 },
+          generation: 0,
+          element: "branch",
+        },
+        { x: x - 10, y: y + 2 }
+      );
+      const b2 = this.continueSection(
+        {
+          ...section,
+          target: { x: 0, y: 0 },
+          generation: 0,
+          element: "branch",
+        },
+        { x: x + 10, y: y + 2 }
+      );
+      if (b1 && b2) return [b1, b2];
+      if (b1) return [b1];
+      if (b2) return [b2];
+      return undefined;
+    }
     const newAge = section.age + 1;
     const newWidth = Math.max(0, width - 1);
     const baseSection = {
