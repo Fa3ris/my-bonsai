@@ -1,3 +1,5 @@
+import { cyrb128, sfc32 } from "../random";
+
 const SectionType = {
   upward: 0,
   upLeft: 1,
@@ -11,6 +13,21 @@ type Leaf = { x: number; y: number };
 const TRUNK = "trunk";
 const BRANCH = "branch";
 const LEAF = "leaf";
+
+const seed = cyrb128(String(new Date().getTime()));
+const getRand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+
+/**
+ *
+ * @param {*} min inclusive
+ * @param {*} max inclusive
+ * @returns
+ */
+function randInt(min: number, max: number) {
+  const minCeiled = Math.ceil(Math.min(min, max));
+  const maxFloored = Math.floor(Math.max(min, max));
+  return minCeiled + Math.floor(getRand() * (maxFloored - minCeiled + 1));
+}
 
 /*
 
@@ -90,6 +107,40 @@ type LeafSection = BaseSection & {
 };
 
 type Case = { x: number; y: number; char: string };
+
+/**
+ *
+ * @param min
+ * @param max
+ * @param bias in [min, max]
+ * @param influence in [0, 1]
+ * @returns value in [min, ... bias ... max[
+ */
+const randomWithBias = (
+  min: number,
+  max: number,
+  bias: number,
+  influence: number
+): number => {
+  const baseRand = getRand() * (max - min) + min; // [min, max[
+  const t = getRand() * influence; // [0, influence[
+  const res = baseRand * (1 - t) + bias * t; // [min, ... bias ... max[
+  return res;
+};
+const pickInRect = (
+  xMin: number,
+  xMax: number,
+  yMin: number,
+  yMax: number
+): { x: number; y: number } => {
+  const res = {
+    x: Math.round(randomWithBias(xMin, xMax, xMin + (xMax - xMin) / 2, 0.75)),
+    y: Math.round(randomWithBias(yMin, yMax, yMin + (yMax - yMin) / 2, 0.75)),
+  };
+
+  console.warn(res);
+  return res;
+};
 
 export class Bonsai {
   private list: (Case | Case[])[];
@@ -355,10 +406,14 @@ export class Bonsai {
 
     if (manhattanDist == 4) {
       console.log("split branch");
-      const continued = this.continueSection(section, section.target);
+      const continued = this.continueSection(
+        section,
+        pickInRect(x - 30, x - 1, y, y + 2)
+      );
+
       const splitBranch = this.continueSection(
         section,
-        this.generateTarget(section)
+        pickInRect(x + 1, x + 39, y, y + 2)
       );
       if (continued && splitBranch) {
         return [continued, splitBranch];
@@ -370,8 +425,10 @@ export class Bonsai {
         return undefined;
       }
     }
-
-    const continued = this.continueSection(section, section.target);
+    const continued = this.continueSection(
+      section,
+      pickInRect(x - 30, x + 30, y, y + 2)
+    );
     return continued ? [continued] : undefined;
   }
 
@@ -470,7 +527,6 @@ export class Bonsai {
     const width = section.width;
     const cannotCreateTrunkSection = section.width <= 0;
     if (cannotCreateTrunkSection) {
-      // TODO choose target in a random point in the proximity - do not go back
       const b1 = this.continueSection(
         {
           ...section,
@@ -478,7 +534,7 @@ export class Bonsai {
           generation: 0,
           element: "branch",
         },
-        { x: x - 10, y: y + 2 }
+        pickInRect(x - 10, x - 1, y, y + 2)
       );
       const b2 = this.continueSection(
         {
@@ -487,7 +543,7 @@ export class Bonsai {
           generation: 0,
           element: "branch",
         },
-        { x: x + 10, y: y + 2 }
+        pickInRect(x + 6, x + 30, y, y + 2)
       );
       if (b1 && b2) return [b1, b2];
       if (b1) return [b1];
