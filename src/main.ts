@@ -5,6 +5,8 @@ import { drawGridCorners } from "./draw/grid-corners";
 import { drawRandomTree } from "./draw/random";
 import { randomTreeWithControls } from "./draw/random-with-controls";
 import { Bonsai } from "./trees/bonsai";
+import { LineImplicit } from "./trees/line-implicit-equation";
+import { BresenhamLine } from "./trees/bresenham-line";
 
 if (document.body.querySelector("#DEBUG")) {
   drawGridCorners();
@@ -22,5 +24,7 @@ randomTreeWithControls();
 
 bonsaiWithControls();
 
-
 bonsaiWithControls((width, height) => new Bonsai(width, height));
+
+bonsaiWithControls((width, height) => new BresenhamLine(width, height));
+bonsaiWithControls((width, height) => new LineImplicit());

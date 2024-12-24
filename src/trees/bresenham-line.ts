@@ -7,7 +7,7 @@ type Case = { x: number; y: number; char: string };
 
 type Step = Case | undefined;
 
-export class RandBranch {
+export class BresenhamLine {
   constructor(w: number, h: number) {}
   private list: { x: number; y: number; char: string }[] = [];
 
