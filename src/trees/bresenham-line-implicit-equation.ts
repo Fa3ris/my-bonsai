@@ -10,7 +10,7 @@ type Case = { x: number; y: number; char: string };
 
 type Step = Case | undefined;
 
-export class LineImplicit {
+export class BresenhamLineImplicit {
   constructor() {}
   private list: { x: number; y: number; char: string }[] = [];
 
