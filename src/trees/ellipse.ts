@@ -20,6 +20,13 @@ export class EllipsisImplicitEquation {
       ...ellipse({ x: 25, y: 3 }, 2, 2),
       ...ellipse({ x: 30, y: 3 }, 1, 1),
       ...ellipse({ x: 35, y: 10 }, 12, 9),
+      ...ellipseArc(
+        { x: 65, y: 10 },
+        12,
+        9,
+        Math.PI / 4,
+        (3 * Math.PI) / 2 - (2 * Math.PI) / 8
+      ),
     ];
     this.list = [...l1];
   }
@@ -86,4 +93,23 @@ function ellipse(center: Point, majorAxis: number, minorAxis: number): Case[] {
     ...thirdQuadrant,
     ...fourthQuadrant,
   ];
+}
+
+function ellipseArc(
+  center: Point,
+  majorAxis: number,
+  minorAxis: number,
+  angleStart: number,
+  angleEnd: number
+): Case[] {
+  const { x: xm, y: ym } = center;
+  const cases = ellipse(center, majorAxis, minorAxis);
+  const withinAngle = (point: Point): boolean => {
+    const { x, y } = point;
+    const rawAngle = Math.atan2(y - ym, x - xm);
+    const angle = rawAngle > 0 ? rawAngle : rawAngle + 2 * Math.PI;
+    return angleStart <= angle && angle <= angleEnd;
+  };
+  const filtered = cases.filter(withinAngle);
+  return filtered;
 }
