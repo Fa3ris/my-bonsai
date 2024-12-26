@@ -19,6 +19,7 @@ export class EllipsisImplicitEquation {
       ...ellipse({ x: 15, y: 10 }, 11, 5),
       ...ellipse({ x: 25, y: 3 }, 2, 2),
       ...ellipse({ x: 30, y: 3 }, 1, 1),
+      ...ellipse({ x: 50, y: 7 }, 2, 1),
       ...ellipse({ x: 35, y: 10 }, 12, 9),
       ...ellipseArc(
         { x: 65, y: 10 },
@@ -27,6 +28,9 @@ export class EllipsisImplicitEquation {
         Math.PI / 4,
         (3 * Math.PI) / 2 - (2 * Math.PI) / 8
       ),
+      ...ellipseArc({ x: 65, y: 10 }, 5, 4, Math.PI / 4, (3 * Math.PI) / 4),
+      ...ellipseFilled({ x: 40, y: 8 }, 7, 3),
+      ...ellipseFilled({ x: 22, y: 13 }, 10, 3, "&"),
     ];
     this.list = [...l1];
   }
@@ -58,10 +62,10 @@ function ellipse(center: Point, majorAxis: number, minorAxis: number): Case[] {
   let e_xy = a2 - (2 * a - 1) * b2;
 
   while (true) {
-    firstQuadrant.push({ x: xm - x, y: ym + y, char: "*" });
-    secondQuadrant.push({ x: xm + x, y: ym + y, char: "&" });
-    thirdQuadrant.push({ x: xm + x, y: ym - y, char: "$" });
-    fourthQuadrant.push({ x: xm - x, y: ym - y, char: "@" });
+    firstQuadrant.push({ x: xm - x, y: ym + y, char: "_" });
+    secondQuadrant.push({ x: xm + x, y: ym + y, char: "_" });
+    thirdQuadrant.push({ x: xm + x, y: ym - y, char: "_" });
+    fourthQuadrant.push({ x: xm - x, y: ym - y, char: "_" });
 
     const e_x = e_xy - (2 * x + 1) * b2;
     if (e_xy + e_x > 0) {
@@ -80,8 +84,8 @@ function ellipse(center: Point, majorAxis: number, minorAxis: number): Case[] {
 
   while (y < b) {
     y++;
-    secondQuadrant.push({ x: xm, y: ym + y, char: "#" });
-    fourthQuadrant.push({ x: xm, y: ym - y, char: "%" });
+    secondQuadrant.push({ x: xm, y: ym + y, char: "_" });
+    fourthQuadrant.push({ x: xm, y: ym - y, char: "_" });
   }
 
   secondQuadrant.reverse();
@@ -112,4 +116,54 @@ function ellipseArc(
   };
   const filtered = cases.filter(withinAngle);
   return filtered;
+}
+
+function ellipseFilled(
+  center: Point,
+  majorAxis: number,
+  minorAxis: number,
+  char: string = "*"
+): Case[] {
+  const { x: xm, y: ym } = center;
+  const cases = ellipse(center, majorAxis, minorAxis);
+
+  const visited: Set<string> = new Set(cases.map((c) => `${c.x};${c.y}`));
+
+  const toKey = (p: Point): string => `${p.x};${p.y}`;
+  const stack: Point[] = [{ x: xm, y: ym }];
+
+  const maxAxis = Math.max(majorAxis, minorAxis);
+
+  const minX = center.x - maxAxis;
+  const maxX = center.x + maxAxis;
+  const minY = center.y - maxAxis;
+  const maxY = center.y + maxAxis;
+
+  while (stack.length) {
+    const p = stack.pop()!;
+    const key = toKey(p);
+
+    if (
+      p.x < minX ||
+      p.x > maxX ||
+      p.y < minY ||
+      p.y > maxY ||
+      p.y < 0 ||
+      visited.has(key)
+    ) {
+      continue;
+    }
+
+    visited.add(key);
+    cases.push({ ...p, char });
+
+    stack.push(
+      { x: p.x - 1, y: p.y },
+      { x: p.x + 1, y: p.y },
+      { x: p.x, y: p.y - 1 },
+      { x: p.x, y: p.y + 1 }
+    );
+  }
+
+  return cases;
 }
