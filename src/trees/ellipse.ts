@@ -31,6 +31,9 @@ export class EllipsisImplicitEquation {
       ...ellipseArc({ x: 65, y: 10 }, 5, 4, Math.PI / 4, (3 * Math.PI) / 4),
       ...ellipseFilled({ x: 40, y: 8 }, 7, 3),
       ...ellipseFilled({ x: 22, y: 13 }, 10, 3, "&"),
+      ...circle({ x: 28, y: 10 }, 4),
+      ...circle({ x: 65, y: 7 }, 7),
+      ...circleFilled({ x: 67, y: 5 }, 4),
     ];
     this.list = [...l1];
   }
@@ -39,6 +42,48 @@ export class EllipsisImplicitEquation {
     if (i < 0 || i > this.list.length) return undefined;
     return this.list[i];
   }
+}
+
+// equations simplify because minor axis = major axis = radius
+function circle(center: Point, r: number): Case[] {
+  const { x: xm, y: ym } = center;
+  const secondQuadrant: Case[] = [];
+  const firstQuadrant: Case[] = [];
+  const thirdQuadrant: Case[] = [];
+  const fourthQuadrant: Case[] = [];
+  let x = -r;
+  let y = 0;
+
+  let e_xy = 2 - 2 * r;
+  do {
+    firstQuadrant.push({ x: xm - x, y: ym + y, char: "_" });
+    secondQuadrant.push({ x: xm + x, y: ym + y, char: "_" });
+    thirdQuadrant.push({ x: xm + x, y: ym - y, char: "_" });
+    fourthQuadrant.push({ x: xm - x, y: ym - y, char: "_" });
+    const prevE_xy = e_xy;
+
+    let yInc = false;
+    if (prevE_xy < y + 0.5) {
+      y++;
+      e_xy += 2 * y + 1;
+      yInc = true;
+    }
+    const yStepWasNotEnoughToAdjustErr = yInc && e_xy >= y + 0.5;
+    if (prevE_xy > x + 0.5 || yStepWasNotEnoughToAdjustErr) {
+      x++;
+      e_xy += 2 * x + 1;
+    }
+  } while (x < 0);
+
+  secondQuadrant.reverse();
+  fourthQuadrant.reverse();
+
+  return [
+    ...firstQuadrant,
+    ...secondQuadrant,
+    ...thirdQuadrant,
+    ...fourthQuadrant,
+  ];
 }
 
 function ellipse(center: Point, majorAxis: number, minorAxis: number): Case[] {
@@ -138,6 +183,49 @@ function ellipseFilled(
   const maxX = center.x + maxAxis;
   const minY = center.y - maxAxis;
   const maxY = center.y + maxAxis;
+
+  while (stack.length) {
+    const p = stack.pop()!;
+    const key = toKey(p);
+
+    if (
+      p.x < minX ||
+      p.x > maxX ||
+      p.y < minY ||
+      p.y > maxY ||
+      p.y < 0 ||
+      visited.has(key)
+    ) {
+      continue;
+    }
+
+    visited.add(key);
+    cases.push({ ...p, char });
+
+    stack.push(
+      { x: p.x - 1, y: p.y },
+      { x: p.x + 1, y: p.y },
+      { x: p.x, y: p.y - 1 },
+      { x: p.x, y: p.y + 1 }
+    );
+  }
+
+  return cases;
+}
+
+function circleFilled(center: Point, r: number, char: string = "*"): Case[] {
+  const { x: xm, y: ym } = center;
+  const cases = circle(center, r);
+
+  const visited: Set<string> = new Set(cases.map((c) => `${c.x};${c.y}`));
+
+  const toKey = (p: Point): string => `${p.x};${p.y}`;
+  const stack: Point[] = [{ x: xm, y: ym }];
+
+  const minX = center.x - r;
+  const maxX = center.x + r;
+  const minY = center.y - r;
+  const maxY = center.y + r;
 
   while (stack.length) {
     const p = stack.pop()!;
