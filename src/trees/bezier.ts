@@ -59,6 +59,7 @@ export class BezierImplicitEquation {
       ...bezierPoints({ x: 0, y: 9 }, { x: 16, y: 11 }, { x: 19, y: 1 }),
       ...bezierPointsOpti({ x: 0, y: 9 }, { x: 16, y: 11 }, { x: 19, y: 1 }),
 
+      // not working - should not print apparently
       ...bezierPoints({ x: 0, y: 12 }, { x: 13, y: 10 }, { x: 14, y: 1 }, true),
       ...bezierPointsOpti({ x: 0, y: 9 }, { x: 13, y: 10 }, { x: 14, y: 1 }),
     ];
@@ -103,94 +104,12 @@ function bezierPoints(
     );
   };
 
-  // const dxPos = (p: Point) => {
-  //   const { x, y } = p;
-  //   const xPrime = x - x1;
-  //   const yPrime = y - y1;
-
-  //   const resultBez =
-  //     bezier({ x: xPrime + 1, y: yPrime }) - bezier({ x: xPrime, y: yPrime });
-
-  //   const resDiff =
-  //     (1 + 2 * xPrime) * Math.pow(y0Prime + y2Prime, 2) -
-  //     2 * yPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) +
-  //     2 * curvature * (y0Prime - y2Prime);
-  //   console.log("dxPos", { resultBez, resDiff });
-  //   return (
-  //     (1 + 2 * xPrime) * Math.pow(y0Prime + y2Prime, 2) -
-  //     2 * yPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) +
-  //     2 * curvature * (y0Prime - y2Prime)
-  //   );
-  // };
-
-  // const dxNeg = (p: Point) => {
-  //   const { x, y } = p;
-  //   const xPrime = x - x1;
-  //   const yPrime = y - y1;
-
-  //   const resultBez =
-  //     bezier({ x: xPrime - 1, y: yPrime }) - bezier({ x: xPrime, y: yPrime });
-
-  //   const resDiff =
-  //     (1 - 2 * xPrime) * Math.pow(y0Prime + y2Prime, 2) +
-  //     2 * yPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) -
-  //     2 * curvature * (y0Prime - y2Prime);
-  //   console.log("dxNeg", { resultBez, resDiff });
-  //   return (
-  //     (1 - 2 * xPrime) * Math.pow(y0Prime + y2Prime, 2) +
-  //     2 * yPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) -
-  //     2 * curvature * (y0Prime - y2Prime)
-  //   );
-  // };
-
-  // const dyPos = (p: Point) => {
-  //   const { x, y } = p;
-  //   const xPrime = x - x1;
-  //   const yPrime = y - y1;
-
-  //   const resultBez =
-  //     bezier({ x: xPrime, y: yPrime + 1 }) - bezier({ x: xPrime, y: yPrime });
-
-  //   const resDiff =
-  //     (1 + 2 * yPrime) * Math.pow(x0Prime + x2Prime, 2) -
-  //     2 * xPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) -
-  //     2 * curvature * (x0Prime - x2Prime);
-  //   console.log("dyPos", { resultBez, resDiff });
-  //   return (
-  //     (1 + 2 * yPrime) * Math.pow(x0Prime + x2Prime, 2) -
-  //     2 * xPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) -
-  //     2 * curvature * (x0Prime - x2Prime)
-  //   );
-  // };
-
-  // const dyNeg = (p: Point) => {
-  //   const { x, y } = p;
-  //   const xPrime = x - x1;
-  //   const yPrime = y - y1;
-
-  //   const resultBez =
-  //     bezier({ x: xPrime, y: yPrime - 1 }) - bezier({ x: xPrime, y: yPrime });
-
-  //   const resDiff =
-  //     (1 - 2 * yPrime) * Math.pow(x0Prime + x2Prime, 2) +
-  //     2 * xPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) +
-  //     2 * curvature * (x0Prime - x2Prime);
-  //   console.log("dyNeg", { resultBez, resDiff });
-
-  //   return (
-  //     (1 - 2 * yPrime) * Math.pow(x0Prime + x2Prime, 2) +
-  //     2 * xPrime * (x0Prime + x2Prime) * (y0Prime + y2Prime) +
-  //     2 * curvature * (x0Prime - x2Prime)
-  //   );
-  // };
-
   const diffFunc = (p1: Point, p2: Point) => {
     return bezier(p1) - bezier(p2);
   };
 
   let e_xy =
     sx * sy * sCurvature * bezier({ x: x0Prime + sx, y: y0Prime + sy });
-  // const dx0 = sCurvature * (sx > 0 ? dxPos : dxNeg)({ x: x0, y: y0 + sy });
   const dx0 =
     sx *
     sy *
@@ -200,7 +119,6 @@ function bezierPoints(
       { x: x0Prime, y: y0Prime + sy }
     );
 
-  // const dx2 = sCurvature * (sx < 0 ? dxPos : dxNeg)({ x: x2, y: y2 + sy });
   const dx2 =
     sx *
     sy *
@@ -210,7 +128,6 @@ function bezierPoints(
       { x: x2Prime, y: y2Prime - sy }
     );
   let dx = dx0;
-  // const dy0 = (sy > 0 ? dyPos : dyNeg)({ x: x0 + sx, y: y0 });
 
   const dy0 =
     sy *
