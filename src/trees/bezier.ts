@@ -93,98 +93,71 @@ function bezierPoints(
 
   const curvature = x0Prime * y2Prime - x2Prime * y0Prime;
 
-  const sCurvature = Math.sign(curvature);
-
   const bezier = (p: Point) => {
     const { x, y } = p;
     return (
-      Math.pow(x * (y0 - 2 * y1 + y2) - y * (x0 - 2 * x1 + x2), 2) +
-      2 * curvature * (x * (y0 - y2) - y * (x0 - x2)) +
-      Math.pow(curvature, 2)
+      Math.pow(
+        x * (y0Prime + y2Prime) - y * (x0Prime + x2Prime) - curvature,
+        2
+      ) +
+      4 * curvature * (x * y0Prime - y * x0Prime)
     );
   };
 
-  const diffFunc = (p1: Point, p2: Point) => {
-    return bezier(p1) - bezier(p2);
-  };
+  const diffFunc = (p1: Point, p2: Point) => bezier(p1) - bezier(p2);
 
-  let e_xy =
-    sx * sy * sCurvature * bezier({ x: x0Prime + sx, y: y0Prime + sy });
-  const dx0 =
-    sx *
-    sy *
-    sCurvature *
-    diffFunc(
-      { x: x0Prime + sx, y: y0Prime + sy },
-      { x: x0Prime, y: y0Prime + sy }
-    );
+  const dx0 = diffFunc(
+    { x: x0Prime + sx, y: y0Prime + sy },
+    { x: x0Prime, y: y0Prime + sy }
+  );
 
-  const dx2 =
-    sx *
-    sy *
-    sCurvature *
-    diffFunc(
-      { x: x2Prime - sx, y: y2Prime - sy },
-      { x: x2Prime, y: y2Prime - sy }
-    );
   let dx = dx0;
 
-  const dy0 =
-    sy *
-    sx *
-    sCurvature *
-    diffFunc(
-      { x: x0Prime + sx, y: y0Prime + sy },
-      { x: x0Prime + sx, y: y0Prime }
-    );
-  const dy2 =
-    sy *
-    sx *
-    sCurvature *
-    diffFunc(
-      { x: x2Prime - sx, y: y2Prime - sy },
-      { x: x2Prime - sx, y: y2Prime }
-    );
+  const dy0 = diffFunc(
+    { x: x0Prime + sx, y: y0Prime + sy },
+    { x: x0Prime + sx, y: y0Prime }
+  );
+
   let dy = dy0;
 
-  const dxx = sx * 2 * Math.pow(y0Prime + y2Prime, 2);
-  const dyy = sy * 2 * Math.pow(x0Prime + x2Prime, 2);
+  const dxx = 2 * Math.pow(y0Prime + y2Prime, 2);
+  const dyy = 2 * Math.pow(x0Prime + x2Prime, 2);
   const dxy = -2 * (x0Prime + x2Prime) * (y0Prime + y2Prime);
 
-  console.warn("mine", {
-    dx0,
-    dxx,
-    dy0,
-    dyy,
-    dx2,
-    dy2,
-    e_xy,
-    dxy,
-    sx,
-    sy,
+  let e_xy = bezier({ x: x0Prime + sx, y: y0Prime + sy });
 
-    d1: dx0 + dxx,
-    d2: dy0 + dyy,
-    d3: dx2 + dxx,
-    d4: dy2 + dyy,
-    curvature,
-    sCurvature,
-  });
+  // check if it stays a straight line
+  let xTest = x0,
+    yTest = y0,
+    e_xyTest = e_xy,
+    dxTest = dx,
+    dyText = dy,
+    testLoop = 3;
+  while (testLoop--) {
+    const e_x = e_xyTest - dxTest;
+    const e_y = e_xyTest - dyText;
+    const stepInX = (sx + sy >= 0 ? 1 : -1) * (e_xyTest + e_x) > 0;
+    const stepInY = (sx + sy >= 0 ? 1 : -1) * (e_xyTest + e_y) < 0;
 
-  // NO IDEA WHAT IS THE CONDITION!!!
-  const x0Above = dx0 + dyy >= 0; // sCurvature > 0 ? dx0 + dxx >= 0 : dx0 + dxx >= 0;
-  const y0Under = dy0 + dxx <= 0;
-  const x2Above = dx2 + dyy <= 0;
-  const y2Under = dy2 + dxx >= 0;
-  console.log({ x0Above, y0Under, x2Above, y2Under });
+    if (stepInX) {
+      if (xTest === x2) break;
+      xTest += sx;
+      dxTest += dxx;
+      dyText += dxy;
+      e_xyTest += dxTest;
+    }
 
-  if (x0Above || y0Under || x2Above || y2Under) {
-    console.error("mine assert failed");
-    return [];
+    if (stepInY) {
+      if (yTest === y2) break;
+      yTest += sy;
+      dxTest += dxy;
+      dyText += dyy;
+      e_xyTest += dyText;
+    }
   }
 
-  if (shouldFail) {
-    console.error("mine should have failed");
+  if (xTest === x0 || yTest === y0) {
+    return [];
   }
 
   const points: Case[] = [];
@@ -193,11 +166,15 @@ function bezierPoints(
   while (true) {
     points.push({ x, y, char: "*" });
 
-    // compute before the adjustments
+    // pos pos OK --- >0
+    // neg pos OK --- >0
+    // neg neg KO --- <0
+
+    const signFactor = sx + sy >= 0 ? 1 : -1; // found by experience
     const e_x = e_xy - dx;
     const e_y = e_xy - dy;
-    const stepInX = e_xy + e_x > 0;
-    const stepInY = e_xy + e_y < 0;
+    const stepInX = signFactor * (e_xy + e_x) > 0;
+    const stepInY = signFactor * (e_xy + e_y) < 0;
 
     if (stepInX) {
       if (x === x2) break;
@@ -228,34 +205,43 @@ function bezierPointsOpti(p0: Point, p1: Point, p2: Point): Case[] {
   const sx = x0 < x2 ? 1 : -1,
     sy = y0 < y2 ? 1 : -1;
 
-  let x = x0 - 2 * x1 + x2,
-    y = y0 - 2 * y1 + y2,
-    xy = 2 * x * y * sx * sy;
+  let x = x0 - 2 * x1 + x2, // x0Prime + x2Prime
+    y = y0 - 2 * y1 + y2, // y0Prime + y2Prime
+    xy = 2 * x * y * sx * sy; // 2(x0Prime + x2Prime)(y0Prime + y2Prime)
 
+  /* 
+    ((x0Prime + x2Prime)(y2 - y0) - (y0Prime + y2Prime)(x2 - x0)) / 2
+    (x0Prime(y2 - y0) + x2Prime(y2 - y0) - y0P(x2-x0) - y2P(x2-x0)) /2
+    (x0P(y2 - y1 + y1 - y0) + x2P(y2 - y1 - y0 + y1) - y0P(x2 - x1 -x0 + x1) - y2P(x2 -x1 -x0 + x1)) /2
+    (x0P* y2P - x0P*y0P + x2P*y2P - x2P*y0P - y0P*x2P + y0P*x0P - y2P*x2P + y2P*x0P)/2
+    (x0P*y2P- x2p*y0P - y0P * x2P + y2P*x0P) / 2
+    x0P*y2P - x2p*y0P
+  */
   const cur = (sx * sy * (x * (y2 - y0) - y * (x2 - x0))) / 2;
 
-  let dx =
+  let dx = // dx- for x = x0, y = y0
+    // e(x0Prime -1, y0Prime) - e(x0Prime, y0Prime)
     (1 - 2 * Math.abs(x0 - x1)) * y * y +
     Math.abs(y0 - y1) * xy -
     2 * cur * Math.abs(y0 - y2);
 
-  let dy =
+  let dy = // dy- for x=x0, y=y0
     (1 - 2 * Math.abs(y0 - y1)) * x * x +
     Math.abs(x0 - x1) * xy +
     2 * cur * Math.abs(x0 - x2);
 
-  let ex =
+  let ex = // dx- for x = x2, y=y2
     (1 - 2 * Math.abs(x2 - x1)) * y * y +
     Math.abs(y2 - y1) * xy +
     2 * cur * Math.abs(y0 - y2);
 
-  let ey =
+  let ey = // dy- for x = x2, y=y2
     (1 - 2 * Math.abs(y2 - y1)) * x * x +
     Math.abs(x2 - x1) * xy -
     2 * cur * Math.abs(x0 - x2);
 
-  x *= 2 * x;
-  y *= 2 * y;
+  x *= 2 * x; // x = 2 * (x0Prime + x2Prime)^2 = dyy
+  y *= 2 * y; // y = 2 * (y0P + y2P) ^2 = dxx
 
   if (cur < 0) {
     /* negated curvature */
@@ -281,12 +267,17 @@ function bezierPointsOpti(p0: Point, p1: Point, p2: Point): Case[] {
     d2: dy + x,
     d3: ex + y,
     d4: ey + x,
+    d1b: dx >= -y,
+    d2b: dy <= -x,
+    exb: ex < -y,
+    eyb: ey >= -x,
     dxy: xy,
     curvature: cur,
     sx,
     sy,
   });
 
+  // dx-(p=PO) + dxx >=0
   if (dx >= -y || dy <= -x || ex <= -y || ey >= -x) {
     console.error("opti should fail");
     return [];
