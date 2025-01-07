@@ -19,6 +19,18 @@ export class BezierImplicitEquation {
     const xOffset2 = 6;
     const yOffset = 10;
     const l1 = [
+      ...bezierPoints({ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 4, y: 4 }),
+      ...bezierPoints({ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 11, y: 7 }),
+      ...bezierPointsOpti(
+        { x: 0 + 30, y: 0 },
+        { x: 4 + 30, y: 2 },
+        { x: 11 + 30, y: 7 }
+      ),
+      ...bezierPointsOpti(
+        { x: 0 + 30, y: 0 },
+        { x: 4 + 30, y: 2 },
+        { x: 4 + 30, y: 4 }
+      ),
       // from left down to up right
       ...bezierPoints({ x: 0, y: 0 }, { x: 0, y: 2 }, { x: 4, y: 4 }),
       ...bezierPointsOpti(
@@ -34,9 +46,9 @@ export class BezierImplicitEquation {
         { x: 0, y: 0 + yOffset }
       ),
       ...bezierPointsOpti(
-        { x: 4 + xOffset2, y: 4 + yOffset },
-        { x: 0 + xOffset2, y: 2 + yOffset },
-        { x: 0 + xOffset2, y: 0 + yOffset }
+        { x: 4 + xOffset, y: 4 + yOffset },
+        { x: 0 + xOffset, y: 2 + yOffset },
+        { x: 0 + xOffset, y: 0 + yOffset }
       ),
       //
       // // from down right to up left
@@ -56,7 +68,7 @@ export class BezierImplicitEquation {
       // almost straight lines - should not draw
       ...bezierPoints({ x: 17, y: 1 }, { x: 2, y: 0 }, { x: -2, y: 12 }, true),
       ...bezierPointsOpti({ x: 17, y: 1 }, { x: 2, y: 0 }, { x: -2, y: 12 }),
-      ...bezierPoints({ x: 0, y: 9 }, { x: 16, y: 11 }, { x: 19, y: 1 }),
+      ...bezierPoints({ x: 0, y: 9 }, { x: 16, y: 11 }, { x: 19, y: 1 }, true),
       ...bezierPointsOpti({ x: 0, y: 9 }, { x: 16, y: 11 }, { x: 19, y: 1 }),
 
       // not working - should not print apparently
@@ -92,6 +104,7 @@ function bezierPoints(
   const sy = Math.sign(y2 - y0);
 
   const curvature = x0Prime * y2Prime - x2Prime * y0Prime;
+  const sc = Math.sign(curvature);
 
   const bezier = (p: Point) => {
     const { x, y } = p;
@@ -126,18 +139,20 @@ function bezierPoints(
 
   let e_xy = bezier({ x: x0Prime + sx, y: y0Prime + sy });
 
+  const sign = sx * sy > 0 ? sc : -sc; // empirical
+
   // check if it stays a straight line
   let xTest = x0,
     yTest = y0,
     e_xyTest = e_xy,
     dxTest = dx,
     dyText = dy,
-    testLoop = 3;
+    testLoop = 2; // empirical
   while (testLoop--) {
     const e_x = e_xyTest - dxTest;
     const e_y = e_xyTest - dyText;
-    const stepInX = (sx + sy >= 0 ? 1 : -1) * (e_xyTest + e_x) > 0;
-    const stepInY = (sx + sy >= 0 ? 1 : -1) * (e_xyTest + e_y) < 0;
+    const stepInX = sign * (e_xyTest + e_x) > 0;
+    const stepInY = sign * (e_xyTest + e_y) < 0;
 
     if (stepInX) {
       if (xTest === x2) break;
@@ -166,15 +181,10 @@ function bezierPoints(
   while (true) {
     points.push({ x, y, char: "*" });
 
-    // pos pos OK --- >0
-    // neg pos OK --- >0
-    // neg neg KO --- <0
-
-    const signFactor = sx + sy >= 0 ? 1 : -1; // found by experience
     const e_x = e_xy - dx;
     const e_y = e_xy - dy;
-    const stepInX = signFactor * (e_xy + e_x) > 0;
-    const stepInY = signFactor * (e_xy + e_y) < 0;
+    const stepInX = sign * (e_xy + e_x) > 0;
+    const stepInY = sign * (e_xy + e_y) < 0;
 
     if (stepInX) {
       if (x === x2) break;
