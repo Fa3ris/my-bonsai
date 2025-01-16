@@ -15,9 +15,74 @@ export class BezierImplicitEquation {
   private list: { x: number; y: number; char: string }[] = [];
 
   growAll(): void {
+    const vertices: [Point, Point, Point][] = [
+      [
+        { x: 0, y: 0 },
+        { x: 4, y: 2 },
+        { x: 4, y: 4 },
+      ],
+      [
+        { x: 0, y: 0 },
+        { x: 4, y: 2 },
+        { x: 11, y: 7 },
+      ],
+      [
+        { x: 0, y: 0 },
+        { x: 0, y: 2 },
+        { x: 4, y: 4 },
+      ],
+      [
+        { x: 4, y: 4 },
+        { x: 0, y: 2 },
+        { x: 0, y: 0 },
+      ],
+      [
+        { x: 15, y: 0 },
+        { x: 15, y: 2 },
+        { x: 11, y: 4 },
+      ],
+      [
+        { x: 20, y: 0 },
+        { x: 20, y: 2 },
+        { x: 20 + 4, y: 5 },
+      ],
+      [
+        { x: 17, y: 1 },
+        { x: 2, y: 0 },
+        { x: -2, y: 12 },
+      ],
+      [
+        { x: 0, y: 9 },
+        { x: 16, y: 11 },
+        { x: 19, y: 1 },
+      ],
+    ];
+
     const xOffset = 4;
-    const xOffset2 = 6;
     const yOffset = 10;
+    const optiVertices = vertices.map(([p0, p1, p2]) => {
+      return [
+        { x: p0.x, y: p0.y + yOffset },
+        { x: p1.x, y: p1.y + yOffset },
+        { x: p2.x, y: p2.y + yOffset },
+      ];
+    });
+
+    const fineOptiVertices = vertices.map(([p0, p1, p2]) => {
+      return [
+        { x: p0.x + 7 * xOffset, y: p0.y },
+        { x: p1.x + 7 * xOffset, y: p1.y },
+        { x: p2.x + 7 * xOffset, y: p2.y },
+      ];
+    });
+    const fineVertices = vertices.map(([p0, p1, p2]) => {
+      return [
+        { x: p0.x + 7 * xOffset, y: p0.y + yOffset },
+        { x: p1.x + 7 * xOffset, y: p1.y + yOffset },
+        { x: p2.x + 7 * xOffset, y: p2.y + yOffset },
+      ];
+    });
+    const xOffset2 = 6;
     const l1 = [
       ...bezierPoints({ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 4, y: 4 }),
       ...bezierPoints({ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 11, y: 7 }),
@@ -75,7 +140,16 @@ export class BezierImplicitEquation {
       ...bezierPoints({ x: 0, y: 12 }, { x: 13, y: 10 }, { x: 14, y: 1 }, true),
       ...bezierPointsOpti({ x: 0, y: 9 }, { x: 13, y: 10 }, { x: 14, y: 1 }),
     ];
-    this.list = [...l1];
+
+    const l2 = [
+      ...vertices.flatMap((v) => bezierPoints(v[0], v[1], v[2])),
+      ...optiVertices.flatMap(([p0, p1, p2]) => bezierPointsOpti(p0, p1, p2)),
+      ...fineOptiVertices.flatMap((v) => fineQuadBezierOpti(v[0], v[1], v[2])),
+      ...fineVertices.flatMap((v) =>
+        bezierPointsFineResolution(v[0], v[1], v[2])
+      ),
+    ];
+    this.list = [...l2];
   }
 
   step(i: number): Step {
@@ -339,5 +413,233 @@ function bezierPointsOpti(p0: Point, p1: Point, p2: Point): Case[] {
     }
   }
 
+  return points;
+}
+
+// shitty implementation
+function bezierPointsFineResolution(p0: Point, p1: Point, p2: Point): Case[] {
+  const { x: x0, y: y0 } = p0;
+  const { x: x1, y: y1 } = p1;
+  const { x: x2, y: y2 } = p2;
+
+  const sx = x0 < x2 ? 1 : -1,
+    sy = y0 < y2 ? 1 : -1;
+
+  const x0Prime = x0 - x1;
+  const x2Prime = x2 - x1;
+
+  const y0Prime = y0 - y1;
+  const y2Prime = y2 - y1;
+
+  const resolutionFactorX = x0Prime + x2Prime;
+  const resolutionFactorY = y0Prime + y2Prime;
+
+  const dyy = 2 * resolutionFactorX * resolutionFactorX;
+  const dxx = 2 * resolutionFactorY * resolutionFactorY;
+
+  const dxy = 2 * resolutionFactorX * resolutionFactorY;
+  const signedDxy = sx * sy * dxy;
+
+  const curvature = x0Prime * y2Prime - x2Prime * y0Prime;
+
+  const signedCurvature = sx * sy * curvature;
+
+  const computeDeviations = (
+    point: Point,
+    sign: 1 | -1
+  ): { dx: number; dy: number } => {
+    const { x, y } = point;
+    const dx =
+      -Math.abs(x - x1) * dxx +
+      Math.abs(y - y1) * signedDxy -
+      sign * signedCurvature * Math.abs(y0 - y2);
+
+    const dy =
+      -Math.abs(y - y1) * dyy +
+      Math.abs(x - x1) * signedDxy +
+      sign * signedCurvature * Math.abs(y0 - y2);
+
+    return { dx, dy };
+  };
+
+  const { dx: dx0, dy: dy0 } = computeDeviations(p0, 1);
+  const { dx: dx2, dy: dy2 } = computeDeviations(p2, -1);
+
+  const signOfGradientIsConstant =
+    x0Prime * x2Prime <= 0 && y0Prime * y2Prime <= 0;
+
+  if (!signOfGradientIsConstant) {
+    return [];
+  }
+
+  if (curvature === 0) {
+    return [];
+  }
+
+  let resolutionFactor: number = 1;
+  if (dx0 === 0 || dy0 === 0 || dx2 === 0 || dy2 === 0) {
+    resolutionFactor = 1 + Math.abs(dxy / curvature) / 2;
+  } else {
+    resolutionFactor = Math.max(
+      (2 * dxx) / dx0,
+      (2 * dyy) / dy0,
+      (2 * dxx) / dx2,
+      (2 * dyy) / dy2,
+      resolutionFactor
+    );
+  }
+
+  let dxxIter = dxx,
+    dyyIter = dyy,
+    dxyIter = dxy,
+    dxIter = dx0,
+    dyIter = dy0;
+
+  if (curvature < 0) {
+    dxxIter = -dxxIter;
+    dyyIter = -dyyIter;
+    dxyIter = -dxyIter;
+    dxIter = -dxIter;
+    dyIter = -dyIter;
+  }
+
+  dxIter = resolutionFactor * dxIter + dxxIter / 2 - dxyIter;
+  dyIter = resolutionFactor * dyIter + dyyIter / 2 - dxyIter;
+
+  let error = dxIter + dyIter + dxyIter;
+
+  let resolutionX = resolutionFactor;
+  let resolutionY = resolutionFactor;
+
+  let temp: number;
+  let x = x0;
+  let y = y0;
+
+  const points: Case[] = [];
+  let iterations = 10;
+  while (iterations--) {
+    points.push({ x, y, char: "*" });
+    if (x === x2 && y === y2) {
+      break;
+    }
+
+    do {
+      temp = 2 * error - dyIter;
+      if (2 * error >= dxIter) {
+        resolutionX--;
+        dyIter -= dxyIter;
+        dxIter += dxxIter;
+
+        error += dxIter;
+      }
+
+      if (temp <= 0) {
+        resolutionY--;
+        dxIter -= dxyIter;
+        dyIter += dyyIter;
+        error += dyIter;
+      }
+    } while (resolutionX > 0 && resolutionY > 0);
+
+    if (2 * resolutionX <= resolutionFactor) {
+      x += sx;
+      resolutionX += resolutionFactor;
+    }
+    if (2 * resolutionY <= resolutionFactor) {
+      y += sy;
+      resolutionY += resolutionFactor;
+    }
+  }
+
+  return points;
+}
+
+function fineQuadBezierOpti(p0: Point, p1: Point, p2: Point): Case[] {
+  let { x: x0, y: y0 } = p0;
+  const { x: x1, y: y1 } = p1;
+  const { x: x2, y: y2 } = p2;
+
+  let sx = x0 < x2 ? 1 : -1,
+    sy = y0 < y2 ? 1 : -1; /* step direction */
+  let f = 1,
+    fx = x0 - 2 * x1 + x2,
+    fy = y0 - 2 * y1 + y2;
+  let x = 2 * fx * fx,
+    y = 2 * fy * fy,
+    xy = 2 * fx * fy * sx * sy;
+  let cur = sx * sy * (fx * (y2 - y0) - fy * (x2 - x0)); /* curvature */
+  /* compute error increments of P0 */
+  let dx =
+    Math.abs(y0 - y1) * xy - Math.abs(x0 - x1) * y - cur * Math.abs(y0 - y2);
+  let dy =
+    Math.abs(x0 - x1) * xy - Math.abs(y0 - y1) * x + cur * Math.abs(x0 - x2);
+  /* compute error increments of P2 */
+  let ex =
+    Math.abs(y2 - y1) * xy - Math.abs(x2 - x1) * y + cur * Math.abs(y0 - y2);
+  let ey =
+    Math.abs(x2 - x1) * xy - Math.abs(y2 - y1) * x - cur * Math.abs(x0 - x2);
+
+  /* sign of gradient must not change */
+  const signOfGradientIsConstant =
+    (x0 - x1) * (x2 - x1) <= 0 && (y0 - y1) * (y2 - y1) <= 0;
+  if (!signOfGradientIsConstant) {
+    return [];
+    // console.assert((x0 - x1) * (x2 - x1) <= 0 && (y0 - y1) * (y2 - y1) <= 0);
+  }
+  if (cur == 0) {
+    return [];
+  } // plotLine(x0,y0, x2,y2); return; } /* straight line */
+  /* compute required minimum resolution factor */
+  if (dx == 0 || dy == 0 || ex == 0 || ey == 0)
+    f = Math.abs(xy / cur) / 2 + 1; /* division by zero: use curvature */
+  else {
+    fx = (2 * y) / dx;
+    if (fx > f) f = fx; /* increase resolution */
+    fx = (2 * x) / dy;
+    if (fx > f) f = fx;
+    fx = (2 * y) / ex;
+    if (fx > f) f = fx;
+    fx = (2 * x) / ey;
+    if (fx > f) f = fx;
+  } /* negated curvature? */
+  const points: Case[] = [];
+  if (cur < 0) {
+    x = -x;
+    y = -y;
+    dx = -dx;
+    dy = -dy;
+    xy = -xy;
+  }
+  dx = f * dx + y / 2 - xy;
+  dy = f * dy + x / 2 - xy;
+  ex = dx + dy + xy; /* error 1.step */
+  for (fx = fy = f; ; ) {
+    /* plot curve */
+    points.push({ x: x0, y: y0, char: "*" });
+    //  setPixel(x0,y0);
+    if (x0 == x2 && y0 == y2) break;
+    do {
+      /* move f sub-pixel */
+      ey = 2 * ex - dy; /* save value for test of y step */
+      if (2 * ex >= dx) {
+        fx--;
+        dy -= xy;
+        ex += dx += y;
+      } /* x step */
+      if (ey <= 0) {
+        fy--;
+        dx -= xy;
+        ex += dy += x;
+      } /* y step */
+    } while (fx > 0 && fy > 0); /* pixel complete? */
+    if (2 * fx <= f) {
+      x0 += sx;
+      fx += f;
+    } /* sufficient sub-steps.. */
+    if (2 * fy <= f) {
+      y0 += sy;
+      fy += f;
+    } /* .. for a pixel? */
+  }
   return points;
 }
