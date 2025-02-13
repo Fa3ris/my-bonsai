@@ -49,7 +49,7 @@ export class BezierImplicitEquation {
       [
         { x: 17, y: 1 },
         { x: 2, y: 0 },
-        { x: -2, y: 12 },
+        { x: 0, y: 12 },
       ],
       [
         { x: 0, y: 9 },
@@ -142,9 +142,10 @@ export class BezierImplicitEquation {
     ];
 
     const l2 = [
-      ...vertices.flatMap((v) => bezierPoints(v[0], v[1], v[2])),
+      // ...vertices.flatMap((v) => bezierPoints(v[0], v[1], v[2])),
       ...optiVertices.flatMap(([p0, p1, p2]) => bezierPointsOpti(p0, p1, p2)),
       ...fineOptiVertices.flatMap((v) => fineQuadBezierOpti(v[0], v[1], v[2])),
+      ...vertices.flatMap((v) => bezierParametric(v[0], v[1], v[2])),
       // ...fineVertices.flatMap((v) =>
       //   bezierPointsFineResolution(v[0], v[1], v[2])
       // ),
@@ -948,4 +949,102 @@ function fineQuadBezierOpti(p0: Point, p1: Point, p2: Point): Case[] {
     } /* .. for a pixel? */
   }
   return points;
+}
+
+function bezierParametric(p0: Point, p1: Point, p2: Point): Case[] {
+  const steps = 10;
+
+  const points: Case[] = [{ x: p0.x, y: p0.y, char: "*" }];
+  for (let i = 1; i < steps; i++) {
+    const t = i / (steps - 1);
+
+    const x = Math.round(
+      (1 - t) ** 2 * p0.x + 2 * (1 - t) * t * p1.x + t ** 2 * p2.x
+    );
+    const y = Math.round(
+      (1 - t) ** 2 * p0.y + 2 * (1 - t) * t * p1.y + t ** 2 * p2.y
+    );
+    const linePoints = bresenham(points[points.length - 1], { x, y });
+    points.push(...linePoints);
+  }
+
+  return points.filter((item, index, arr) => {
+    return (
+      index === 0 || item.x !== arr[index - 1].x || item.y !== arr[index - 1].y
+    );
+  });
+}
+
+function bresenham(start: Point, end: Point, defaultChar = "*"): Case[] {
+  if (start.x === end.x && start.y === end.y) {
+    return [];
+  }
+  const { x: x0, y: y0 } = start;
+  const { x: x1, y: y1 } = end;
+
+  const dx = Math.abs(x0 - x1);
+  const dy = Math.abs(y0 - y1);
+  const incX = Math.sign(x1 - x0);
+  const incY = Math.sign(y1 - y0);
+
+  const highSlope = dy > dx;
+
+  let x = x0;
+  let y = y0;
+
+  let e_xy = dx - dy;
+  const cases: Case[] = [];
+
+  const char = defaultChar || (highSlope ? "|" : "_");
+
+  while (true) {
+    if (cases.length > 10) {
+      return cases;
+    }
+    cases.push({ x, y, char: char });
+    const e_x = e_xy + dy;
+    if (e_xy + e_x > 0) {
+      if (x === x1) break;
+      e_xy -= dy;
+      x += incX;
+    }
+    const e_y = e_xy - dx;
+    if (e_xy + e_y < 0) {
+      if (y === y1) break;
+      e_xy += dx;
+      y += incY;
+    }
+  }
+
+  if (highSlope) {
+    for (let i = 1; i < cases.length - 1; i++) {
+      const { x } = cases[i];
+      const { x: xPrev } = cases[i - 1];
+      const moveLeft = x < xPrev;
+      const moveRight = x > xPrev;
+      if (moveLeft) {
+        const moveLeftDown = incY < 0;
+        cases[i - 1].char = defaultChar || (moveLeftDown ? "/" : "\\");
+      } else if (moveRight) {
+        const moveRightDown = incY < 0;
+        cases[i].char = defaultChar || (moveRightDown ? "\\" : "/");
+      }
+    }
+  } else {
+    for (let i = 1; i < cases.length - 1; i++) {
+      const { y } = cases[i];
+      const { y: yPrev } = cases[i - 1];
+      const moveDown = y < yPrev;
+      const moveUp = y > yPrev;
+      if (moveDown) {
+        const moveDownRight = incX > 0;
+        cases[i].char = defaultChar || (moveDownRight ? "\\" : "/");
+      } else if (moveUp) {
+        const moveUpRight = incX > 0;
+        cases[i - 1].char = defaultChar || (moveUpRight ? "/" : "\\");
+      }
+    }
+  }
+
+  return cases;
 }
