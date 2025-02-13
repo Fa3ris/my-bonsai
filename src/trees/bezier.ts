@@ -146,6 +146,7 @@ export class BezierImplicitEquation {
       ...optiVertices.flatMap(([p0, p1, p2]) => bezierPointsOpti(p0, p1, p2)),
       ...fineOptiVertices.flatMap((v) => fineQuadBezierOpti(v[0], v[1], v[2])),
       ...vertices.flatMap((v) => bezierParametric(v[0], v[1], v[2])),
+      ...optiVertices.flatMap(([p0, p1, p2]) => bezierDeCasteljau(p0, p1, p2)),
       // ...fineVertices.flatMap((v) =>
       //   bezierPointsFineResolution(v[0], v[1], v[2])
       // ),
@@ -973,6 +974,47 @@ function bezierParametric(p0: Point, p1: Point, p2: Point): Case[] {
       index === 0 || item.x !== arr[index - 1].x || item.y !== arr[index - 1].y
     );
   });
+}
+
+function bezierDeCasteljau(p0: Point, p1: Point, p2: Point): Case[] {
+  const steps = 11;
+
+  const invertStep = 1 / (steps - 1);
+  const points: Point[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = i * invertStep;
+
+    const pt = getBezierQuadPoint([p0, p1, p2], t);
+
+    points.push(pt);
+  }
+  console.log("points Castel", points);
+
+  return points.map(({ x, y }) => ({
+    x: Math.round(x),
+    y: Math.round(y),
+    char: "*",
+  }));
+}
+
+function getBezierQuadPoint(points: Point[], t: number): Point {
+  if (t === 0) {
+    return points[0];
+  }
+  if (t === 1) {
+    return points[points.length - 1];
+  }
+  if (points.length === 1) {
+    return points[0];
+  }
+
+  const newPoints: Point[] = Array(points.length - 1);
+  for (let i = 0; i < newPoints.length; i++) {
+    const x = (1 - t) * points[i].x + t * points[i + 1].x;
+    const y = (1 - t) * points[i].y + t * points[i + 1].y;
+    newPoints[i] = { x, y };
+  }
+  return getBezierQuadPoint(newPoints, t);
 }
 
 function bresenham(start: Point, end: Point, defaultChar = "*"): Case[] {
