@@ -8,7 +8,7 @@ type Step =
   | { x: number; y: number; char: string }[]
   | undefined;
 
-type Growable = {
+export type Growable = {
   growAll(): void;
   step(i: number): Step;
 };
