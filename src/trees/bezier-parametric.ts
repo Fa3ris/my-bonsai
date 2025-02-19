@@ -120,6 +120,26 @@ function bezierDeCasteljau(p0: Point, p1: Point, p2: Point): Case[] {
   }));
 }
 
+function digitalDifferentialAnalyzer(start: Point, end: Point): Case[] {
+  const dx = Math.abs(end.x - start.x);
+  const dy = Math.abs(end.y - start.y);
+  const steps = Math.max(dx, dy);
+
+  const xIncrement = (end.x - start.x) / steps;
+  const yIncrement = (end.y - start.y) / steps;
+
+  const cases: Case[] = [];
+  let x = start.x;
+  let y = start.y;
+  for (let i = 0; i < steps; i++) {
+    cases.push({ x: Math.trunc(x), y: Math.trunc(y), char: "*" });
+    x += xIncrement;
+    y += yIncrement;
+  }
+
+  return cases;
+}
+
 function adaptativeBezierQuad(
   p0: Point,
   p1: Point,
@@ -139,14 +159,18 @@ function adaptativeBezierQuad(
       { x: Math.round(a.x), y: Math.round(a.y) },
       { x: Math.round(b.x), y: Math.round(b.y) }
     );
-    return [
-      { x: Math.round(a.x), y: Math.round(a.y), char: "*" },
-      { x: Math.round(b.x), y: Math.round(b.y), char: "*" },
-    ];
-    return bresenham(
-      { x: Math.round(a.x), y: Math.round(a.y) },
-      { x: Math.round(b.x), y: Math.round(b.y) }
+    return digitalDifferentialAnalyzer(a, b).filter((point) =>
+      isCloseToCurve(point, tStart, tEnd, p0, p1, p2, 0.5, 5)
     );
+    // get the bezier points in float
+    // between two points, get bresenham line
+    // for each pixel, subdivide the pixel into a grid (4x4)
+    // for each subpixel, compute distance to the bezier curve (how?)
+    // if distance is less than threshold, consider the subpixel is covered
+    // if enough subpixels are covered, consider the pixel is covered
+
+    // ou simplement https://fr.wikipedia.org/wiki/Analyseur_diff%C3%A9rentiel_num%C3%A9rique
+    // pour tracer le segment
   }
 
   console.log("tstart", tStart, "tMid", tMid, "tEnd", tEnd);
@@ -162,8 +186,8 @@ function adaptativeBezierQuad(
 
   console.log("curvature", { c0, c1, c2, maxCurvature });
 
-  // is flat enough
-  if (maxCurvature < threshold) {
+  const isCurveFlatEnough = maxCurvature < threshold;
+  if (isCurveFlatEnough) {
     console.warn("maxCurvature < threshold", { maxCurvature, threshold });
     const a = getBezierQuadPoint([p0, p1, p2], tStart);
     const b = getBezierQuadPoint([p0, p1, p2], tEnd);
@@ -172,15 +196,58 @@ function adaptativeBezierQuad(
       { x: Math.round(a.x), y: Math.round(a.y) },
       { x: Math.round(b.x), y: Math.round(b.y) }
     );
-    return bresenham(
-      { x: Math.round(a.x), y: Math.round(a.y) },
-      { x: Math.round(b.x), y: Math.round(b.y) }
+    return digitalDifferentialAnalyzer(a, b).filter((point) =>
+      isCloseToCurve(point, tStart, tEnd, p0, p1, p2, 0.5, 5)
     );
   }
 
-  const l1 = adaptativeBezierQuad(p0, p1, p2, tStart, tMid);
-  const l2 = adaptativeBezierQuad(p0, p1, p2, tMid, tEnd);
-  return [...l1, ...l2];
+  const firstHalf = adaptativeBezierQuad(p0, p1, p2, tStart, tMid);
+  const secondHalf = adaptativeBezierQuad(p0, p1, p2, tMid, tEnd);
+  return [...firstHalf, ...secondHalf].filter((item, index, arr) => {
+    return (
+      index === 0 || item.x !== arr[index - 1].x || item.y !== arr[index - 1].y
+    );
+  });
+}
+
+function isCloseToCurve(
+  pixel: Case,
+  tStart: number,
+  tEnd: number,
+  p0: Point,
+  p1: Point,
+  p2: Point,
+  distanceThreshold: number,
+  countThreshold: number
+): boolean {
+  const subX = [pixel.x, pixel.x + 0.25, pixel.x + 0.5, pixel.x + 0.75];
+  const subY = [pixel.y, pixel.y + 0.25, pixel.y + 0.5, pixel.y + 0.75];
+
+  const pStart = getBezierQuadPoint([p0, p1, p2], tStart);
+  const tMid = (tStart + tEnd) / 2;
+  const pMid = getBezierQuadPoint([p0, p1, p2], tMid);
+
+  const tFourth = (tMid + tStart) / 2;
+  const pFourth = getBezierQuadPoint([p0, p1, p2], tFourth);
+
+  const tThreeFourth = (tMid + tEnd) / 2;
+  const pThreeFourth = getBezierQuadPoint([p0, p1, p2], tThreeFourth);
+
+  const pEnd = getBezierQuadPoint([p0, p1, p2], tEnd);
+  const curvePoints = [pStart, pMid, pFourth, pThreeFourth, pEnd];
+
+  const subPixels = subX.flatMap((x) => subY.map((y) => ({ x, y })));
+  const subPixelsWithin = subPixels.filter((pixel) => {
+    const dist = Math.min(
+      ...curvePoints.map((p) =>
+        Math.sqrt((p.x - pixel.x) ** 2 + (p.y - pixel.y) ** 2)
+      )
+    );
+    return dist < distanceThreshold;
+  }).length;
+  console.log(pixel, { tStart, tEnd }, "subPixelsWithin", subPixelsWithin);
+
+  return subPixelsWithin > countThreshold;
 }
 
 function getBezierQuadPoint(points: Point[], t: number): Point {
