@@ -20,11 +20,11 @@ export class BezierParametricEquation implements Growable {
         { x: 4, y: 2 },
         { x: 4, y: 4 },
       ],
-      //   [
-      //     { x: 0, y: 0 },
-      //     { x: 4, y: 2 },
-      //     { x: 11, y: 7 },
-      //   ],
+      [
+        { x: 0 + 7, y: 0 },
+        { x: 4 + 7, y: 2 },
+        { x: 11 + 7, y: 7 },
+      ],
       //   [
       //     { x: 0, y: 0 },
       //     { x: 0, y: 2 },
@@ -188,6 +188,9 @@ function adaptativeBezierQuad(
 
   const isCurveFlatEnough = maxCurvature < threshold;
   if (isCurveFlatEnough) {
+    if (tEnd - tStart > 0.9) {
+      return digitalDifferentialAnalyzer(p0, p2);
+    }
     console.warn("maxCurvature < threshold", { maxCurvature, threshold });
     const a = getBezierQuadPoint([p0, p1, p2], tStart);
     const b = getBezierQuadPoint([p0, p1, p2], tEnd);
