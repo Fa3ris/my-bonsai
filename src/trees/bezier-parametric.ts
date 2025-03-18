@@ -25,59 +25,42 @@ export class BezierParametricEquation implements Growable {
         { x: 4 + 7, y: 2 },
         { x: 11 + 7, y: 7 },
       ],
-      //   [
-      //     { x: 0, y: 0 },
-      //     { x: 0, y: 2 },
-      //     { x: 4, y: 4 },
-      //   ],
-      //   [
-      //     { x: 4, y: 4 },
-      //     { x: 0, y: 2 },
-      //     { x: 0, y: 0 },
-      //   ],
-      //   [
-      //     { x: 15, y: 0 },
-      //     { x: 15, y: 2 },
-      //     { x: 11, y: 4 },
-      //   ],
-      //   [
-      //     { x: 20, y: 0 },
-      //     { x: 20, y: 2 },
-      //     { x: 20 + 4, y: 5 },
-      //   ],
-      //   [
-      //     { x: 17, y: 1 },
-      //     { x: 2, y: 0 },
-      //     { x: 0, y: 12 },
-      //   ],
-      //   [
-      //     { x: 0, y: 9 },
-      //     { x: 16, y: 11 },
-      //     { x: 19, y: 1 },
-      //   ],
-    ];
-
-    const l2 = [
-      //   ...vertices.flatMap((v) => bezierDeCasteljau(v[0], v[1], v[2])),
+      [
+        { x: 0, y: 0 },
+        { x: 0, y: 2 },
+        { x: 4, y: 4 },
+      ],
+      [
+        { x: 4, y: 4 },
+        { x: 0, y: 2 },
+        { x: 0, y: 0 },
+      ],
+      [
+        { x: 15, y: 0 },
+        { x: 15, y: 2 },
+        { x: 11, y: 4 },
+      ],
+      [
+        { x: 20, y: 0 },
+        { x: 20, y: 2 },
+        { x: 20 + 4, y: 5 },
+      ],
+      [
+        { x: 17, y: 1 },
+        { x: 2, y: 0 },
+        { x: 0, y: 12 },
+      ],
+      [
+        { x: 0, y: 9 },
+        { x: 16, y: 11 },
+        { x: 19, y: 1 },
+      ],
     ];
 
     const l3 = [
       ...vertices.flatMap((v) => adaptativeBezierQuad(v[0], v[1], v[2], 0, 1)),
     ];
-    this.list = [...l2, ...l3];
-
-    const curve = curvatureBezierQuadratic(
-      {
-        x: 0,
-        y: 0,
-      },
-      { x: 1, y: 2 },
-      { x: 2, y: 0 }
-    );
-
-    console.log("curve 0", curve(0));
-    console.log("curve .5", curve(0.5));
-    console.log("curve 1", curve(1));
+    this.list = [...l3];
   }
 
   step(i: number): Step {

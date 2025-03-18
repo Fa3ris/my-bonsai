@@ -51,7 +51,7 @@ export function bonsaiWithControls(
   tree.growAll();
   const grid = new Grid(width, height);
 
-  let intervalId: number;
+  let intervalId: NodeJS.Timeout;
   const refreshInterval = 50;
 
   function forward() {

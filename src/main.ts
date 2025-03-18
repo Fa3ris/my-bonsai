@@ -10,6 +10,7 @@ import { BresenhamLine } from "./trees/bresenham-line";
 import { EllipsisImplicitEquation } from "./trees/ellipse";
 import { BezierImplicitEquation } from "./trees/bezier";
 import { BezierParametricEquation } from "./trees/bezier-parametric";
+import { bonsaiWithControls2 } from "./draw/bonsai-with-controls-2";
 
 if (document.body.querySelector("#DEBUG")) {
   drawGridCorners();
@@ -34,3 +35,4 @@ bonsaiWithControls(() => new BresenhamLineImplicit());
 bonsaiWithControls(() => new EllipsisImplicitEquation());
 bonsaiWithControls(() => new BezierImplicitEquation());
 bonsaiWithControls(() => new BezierParametricEquation());
+bonsaiWithControls2(() => new BezierParametricEquation());
