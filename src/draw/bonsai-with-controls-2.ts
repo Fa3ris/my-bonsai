@@ -1,4 +1,3 @@
-import { join } from "path";
 import { Grid } from "../Grid";
 import { TrunkTree } from "../trees/trunk";
 
@@ -178,7 +177,7 @@ export function bonsaiWithControls2(
   }
 
   function forward() {
-    bonsaiState.forward() ? draw() : resetState();
+    bonsaiState.forward() ? draw() : clearInterval(intervalId);
   }
 
   function backward() {
