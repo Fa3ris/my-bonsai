@@ -155,17 +155,29 @@ export function bonsaiWithControls2(
     next();
     intervalId = setInterval(next, refreshInterval);
   });
+
+  const save = document.createElement("button");
+  save.textContent = "save";
+  save.addEventListener("click", () => {
+    const content = raster.value;
+    const blob = new Blob([content], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "bonsai.txt";
+    a.click();
+    URL.revokeObjectURL(a.href); // Clean up the URL object
+  });
   const bonsaiState = new BonsaiState(width, height, getTree);
 
-  const stepSpan = document.createElement("div");
+  const step = document.createElement("div");
   drawStep();
 
-  [advance, back, reset, end, play, pause, loop, stepSpan].forEach((el) => {
+  [advance, back, reset, end, play, pause, loop, save, step].forEach((el) => {
     document.body.append(el);
   });
 
   function drawStep() {
-    stepSpan.textContent = `step ${bonsaiState.getStep()}`;
+    step.textContent = `step ${bonsaiState.getStep()}`;
   }
 
   let intervalId: NodeJS.Timeout;
