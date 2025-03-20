@@ -11,28 +11,24 @@ import { EllipsisImplicitEquation } from "./trees/ellipse";
 import { BezierImplicitEquation } from "./trees/bezier";
 import { BezierParametricEquation } from "./trees/bezier-parametric";
 import { bonsaiWithControls2 } from "./draw/bonsai-with-controls-2";
-
-if (document.body.querySelector("#DEBUG")) {
+import { Bonsai2 } from "./trees/bonsai2";
+const DEBUG = document.body.querySelector("#DEBUG");
+if (DEBUG) {
   drawGridCorners();
-}
-
-drawFirstTree();
-
-if (document.body.querySelector("#DEBUG")) {
+  drawFirstTree();
   drawDeterministicTree();
+  drawRandomTree();
+
+  randomTreeWithControls();
+
+  bonsaiWithControls((width, height) => new Bonsai(width, height));
+  bonsaiWithControls((width, height) => new BresenhamLine(width, height));
+  bonsaiWithControls(() => new BresenhamLineImplicit());
+  bonsaiWithControls(() => new EllipsisImplicitEquation());
+  bonsaiWithControls(() => new BezierImplicitEquation());
+  bonsaiWithControls(() => new BezierParametricEquation());
 }
-
-drawRandomTree();
-
-randomTreeWithControls();
 
 bonsaiWithControls();
-
-bonsaiWithControls((width, height) => new Bonsai(width, height));
-
-bonsaiWithControls((width, height) => new BresenhamLine(width, height));
-bonsaiWithControls(() => new BresenhamLineImplicit());
-bonsaiWithControls(() => new EllipsisImplicitEquation());
-bonsaiWithControls(() => new BezierImplicitEquation());
-bonsaiWithControls(() => new BezierParametricEquation());
 bonsaiWithControls2(() => new BezierParametricEquation());
+bonsaiWithControls2((width, height) => new Bonsai2(width, height));
