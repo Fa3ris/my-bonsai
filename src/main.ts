@@ -31,4 +31,4 @@ if (DEBUG) {
 
 bonsaiWithControls();
 bonsaiWithControls2(() => new BezierParametricEquation());
-bonsaiWithControls2((width, height) => new Bonsai2(width, height));
+bonsaiWithControls2((width, height) => new Bonsai2(width, height)).loop();

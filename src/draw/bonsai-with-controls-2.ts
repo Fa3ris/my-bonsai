@@ -50,15 +50,15 @@ class BonsaiState {
     return true;
   }
 
-  backward(): void {
+  backward(): boolean {
     if (this.step <= 0) {
-      return;
+      return false;
     }
     this.step--;
 
     const toErase = this.tree.step(this.step);
     if (toErase === undefined) {
-      return;
+      return false;
     }
 
     if (Array.isArray(toErase)) {
@@ -68,6 +68,7 @@ class BonsaiState {
     } else {
       this.grid.set(toErase.x, toErase.y, blank);
     }
+    return true;
   }
 
   reset(): void {
@@ -96,31 +97,33 @@ export function bonsaiWithControls2(
 
   const advance = document.createElement("button");
   advance.textContent = "advance";
-  advance.addEventListener("mousedown", () => {
-    forward();
-    intervalId = setInterval(forward, refreshInterval);
-  });
-  advance.addEventListener("mouseup", () => {
+  advance.addEventListener("mousedown", playInterval(forward));
+
+  let intervalId: NodeJS.Timeout;
+  const refreshInterval = 50;
+  const loopIdleDuration = 10;
+  function pauseInterval() {
     clearInterval(intervalId);
-  });
-  advance.addEventListener("mouseleave", () => {
-    clearInterval(intervalId);
-  });
+  }
+
+  function playInterval(callback: () => void) {
+    return () => {
+      pauseInterval();
+      callback();
+      intervalId = setInterval(callback, refreshInterval);
+    };
+  }
+
+  advance.addEventListener("mouseup", pauseInterval);
+  advance.addEventListener("mouseleave", pauseInterval);
 
   const back = document.createElement("button");
   back.textContent = "back";
-  back.addEventListener("mousedown", () => {
-    backward();
-    intervalId = setInterval(backward, refreshInterval);
-  });
+  back.addEventListener("mousedown", playInterval(backwardState));
 
-  back.addEventListener("mouseup", () => {
-    clearInterval(intervalId);
-  });
+  back.addEventListener("mouseup", pauseInterval);
 
-  back.addEventListener("mouseleave", () => {
-    clearInterval(intervalId);
-  });
+  back.addEventListener("mouseleave", pauseInterval);
 
   const reset = document.createElement("button");
   reset.textContent = "reset";
@@ -137,24 +140,15 @@ export function bonsaiWithControls2(
 
   const play = document.createElement("button");
   play.textContent = "play";
-  play.addEventListener("click", () => {
-    forward();
-    intervalId = setInterval(forward, refreshInterval);
-  });
+  play.addEventListener("click", playInterval(forward));
 
   const pause = document.createElement("button");
   pause.textContent = "pause";
-  pause.addEventListener("click", () => {
-    clearInterval(intervalId);
-  });
+  pause.addEventListener("click", pauseInterval);
 
   const loop = document.createElement("button");
   loop.textContent = "loop";
-  loop.addEventListener("click", () => {
-    const next = initLoop();
-    next();
-    intervalId = setInterval(next, refreshInterval);
-  });
+  loop.addEventListener("click", playInterval(initLoopState()));
 
   const save = document.createElement("button");
   save.textContent = "save";
@@ -180,21 +174,26 @@ export function bonsaiWithControls2(
     step.textContent = `step ${bonsaiState.getStep()}`;
   }
 
-  let intervalId: NodeJS.Timeout;
-  const refreshInterval = 50;
-
   function draw() {
     drawStep();
     raster.value = bonsaiState.getGridValue();
   }
 
   function forward() {
-    bonsaiState.forward() ? draw() : clearInterval(intervalId);
+    if (forwardState()) return;
+    pauseInterval();
   }
 
-  function backward() {
-    bonsaiState.backward();
-    draw();
+  function forwardState() {
+    const canForward = bonsaiState.forward();
+    if (canForward) draw();
+    return canForward;
+  }
+
+  function backwardState() {
+    const canBackward = bonsaiState.backward();
+    if (canBackward) draw();
+    return canBackward;
   }
 
   function resetState() {
@@ -202,7 +201,7 @@ export function bonsaiWithControls2(
     draw();
   }
 
-  function initLoop() {
+  function initLoopState() {
     function createIdle(duration: number) {
       let i = 0;
       return () => {
@@ -213,7 +212,7 @@ export function bonsaiWithControls2(
     }
 
     function forward() {
-      return bonsaiState.forward() ? draw() : createIdle(10);
+      return bonsaiState.forward() ? draw() : createIdle(loopIdleDuration);
     }
 
     type Update = () => void | Update;
@@ -226,4 +225,8 @@ export function bonsaiWithControls2(
       }
     };
   }
+
+  return {
+    loop: playInterval(initLoopState()),
+  };
 }
