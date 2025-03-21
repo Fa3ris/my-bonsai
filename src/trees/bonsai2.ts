@@ -6,6 +6,7 @@ type BranchParams = {
   start: Point;
   end: Point;
   width: number;
+  layer: number;
   length: number;
   angle: number;
   cells: Cell[];
@@ -28,10 +29,20 @@ function randInt(min: number, max: number) {
 
 // angle relative to the vertical axis
 // trigo direction
-function endPoint(start: Point, {length, angle}: {length: number, angle: number}, bounds: {width: number, height: number}): Point {
+function endPoint(
+  start: Point,
+  { length, angle }: { length: number; angle: number },
+  { width, height }: { width: number; height: number }
+): Point {
   return {
-    x: Math.max(0, start.x - Math.round(length * Math.sin(angle))),
-    y: Math.max(0, start.y + Math.round(length * Math.cos(angle))),
+    x: Math.max(
+      0,
+      Math.min(width, start.x - Math.round(length * Math.sin(angle)))
+    ),
+    y: Math.max(
+      0,
+      Math.min(height, start.y + Math.round(length * Math.cos(angle)))
+    ),
   };
 }
 
@@ -42,22 +53,21 @@ function degToRad(degrees: number) {
 export class Bonsai2 implements Growable {
   private list: (Cell | Cell[])[] = [];
 
+  private readonly bounds = { width: this.width - 1, height: this.height - 1 };
+
   constructor(private width: number, private height: number) {}
 
   growAll(): void {
     const branches: BranchParams[] = [];
 
     const root = { x: Math.round(this.width / 2), y: 1 };
-    const length = 20;
-    const angle = degToRad(57);
-    const rootEnd = endPoint(
-      root,
-      { length, angle },
-      { width: this.width, height: this.height }
-    );
+    const length = 1;
+    const angle = degToRad(0);
+    const rootEnd = endPoint(root, { length, angle }, this.bounds);
     const rootBranch = {
       start: root,
       end: rootEnd,
+      layer: 0,
       width: 1,
       length,
       angle,
@@ -69,41 +79,47 @@ export class Bonsai2 implements Growable {
     while (branches.length > 0) {
       const branch = branches.shift()!;
 
-      // display part of the branch
-      const oneStep = branch.cells.splice(0, randInt(2, 4));
-      if (oneStep.length > 0) {
-        this.list.push(oneStep);
+      const cellsToDisplay = branch.cells.splice(0, randInt(2, 4));
+      if (cellsToDisplay.length > 0) {
+        this.list.push(cellsToDisplay);
       }
 
-      // branch still has cells to display
       if (branch.cells.length > 0) {
         branches.unshift(branch);
         continue;
       }
 
-      // branch off
-      const newLength = Math.max(0, branch.length - randInt(4, 8));
-      if (newLength === 0) continue;
+      const maxLayer = 5;
+      const newLayer = Math.min(maxLayer, branch.layer + 1);
+      if (newLayer >= maxLayer) continue;
 
-      const newAngle = branch.angle + degToRad(30);
-      const newEnd = endPoint(
-        branch.end,
-        {
+      const numberBranches = randInt(2, 3);
+
+      const angleGen = angleGenerator(randInt(30, 45), numberBranches);
+
+      for (let i = 0; i < numberBranches; i++) {
+        const newLength = randInt(4, 8) - branch.layer;
+        const newAngle = branch.angle + degToRad(angleGen.next().value!);
+        const newEnd = endPoint(
+          branch.end,
+          {
+            length: newLength,
+            angle: newAngle,
+          },
+          this.bounds
+        );
+
+        const newBranch = {
+          start: branch.end,
+          end: newEnd,
+          width: 1,
           length: newLength,
+          layer: branch.layer + 1,
           angle: newAngle,
-        },
-        { width: this.width, height: this.height }
-      );
-
-      const newBranch = {
-        start: branch.end,
-        end: newEnd,
-        width: 1,
-        length: newLength,
-        angle: newAngle,
-        cells: branchCells(branch.end, newEnd),
-      };
-      branches.push(newBranch);
+          cells: branchCells(branch.end, newEnd),
+        };
+        branches.push(newBranch);
+      }
     }
   }
 
@@ -178,3 +194,13 @@ function validLeavesPositionsAround(cells: Point[], offset: number) {
   return dedupedEmptyCells;
 }
 
+function* angleGenerator(totalAngle: number, parts: number) {
+  let sign = randInt(0, 1) === 0 ? 1 : -1;
+  const fraction = totalAngle / parts;
+  let angle = fraction;
+  while (true) {
+    yield sign * angle;
+    angle += fraction;
+    sign *= -1;
+  }
+}
