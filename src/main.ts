@@ -12,6 +12,7 @@ import { BezierImplicitEquation } from "./trees/bezier";
 import { BezierParametricEquation } from "./trees/bezier-parametric";
 import { bonsaiWithControls2 } from "./draw/bonsai-with-controls-2";
 import { Bonsai2 } from "./trees/bonsai2";
+import { Bonsai3 } from "./trees/bonsai3";
 const DEBUG = document.body.querySelector("#DEBUG");
 if (DEBUG) {
   drawGridCorners();
@@ -32,3 +33,24 @@ if (DEBUG) {
 bonsaiWithControls();
 bonsaiWithControls2(() => new BezierParametricEquation());
 bonsaiWithControls2((width, height) => new Bonsai2(width, height)).loop();
+bonsaiWithControls2(
+  (width, height) =>
+    new Bonsai3(width, height, {
+      maxLayer: 5,
+      displayCells: [2, 4],
+      root: {
+        x: Math.round(width / 2),
+        y: 1,
+        length: 1,
+        angle: 0,
+      },
+      generateBranches: {
+        number: [2, 3],
+        length: [4, 8],
+        angle: [30, 45],
+        leaves: 10,
+        branchChar: "1",
+        leafChar: "0",
+      },
+    })
+).loop();
