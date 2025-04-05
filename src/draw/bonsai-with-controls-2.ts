@@ -228,5 +228,9 @@ export function bonsaiWithControls2(
 
   return {
     loop: playInterval(initLoopState()),
+    end: () => {
+      while (bonsaiState.forward()) {}
+      raster.value = bonsaiState.getGridValue();
+    },
   };
 }

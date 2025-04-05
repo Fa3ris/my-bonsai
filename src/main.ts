@@ -13,6 +13,7 @@ import { BezierParametricEquation } from "./trees/bezier-parametric";
 import { bonsaiWithControls2 } from "./draw/bonsai-with-controls-2";
 import { Bonsai2 } from "./trees/bonsai2";
 import { Bonsai3 } from "./trees/bonsai3";
+import { BresenhamLineThick } from "./trees/line-thick";
 const DEBUG = document.body.querySelector("#DEBUG");
 if (DEBUG) {
   drawGridCorners();
@@ -54,3 +55,5 @@ bonsaiWithControls2(
       },
     })
 ).loop();
+
+bonsaiWithControls2(() => new BresenhamLineThick()).end();
