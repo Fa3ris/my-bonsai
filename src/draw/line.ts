@@ -63,6 +63,9 @@ https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/68976/eth-
 find the 4 vertices of the rectangle enclosing the line
 
 then fill the rectangle using scanline fill algorithm
+
+see also https://web.cs.ucdavis.edu/~ma/ECS175_S00/Notes/0411_b.pdf
+for special cases
 */
 export function lineThick(start: Point, end: Point, width: number): Point[] {
 

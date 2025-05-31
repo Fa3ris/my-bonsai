@@ -57,3 +57,4 @@ bonsaiWithControls2(
 ).loop();
 
 bonsaiWithControls2(() => new BresenhamLineThick()).end();
+bonsaiWithControls2((w, h) => new BresenhamLine(w, h)).end();
